@@ -11,8 +11,8 @@ type Prompt =
   | { kind: "approval"; id: string; title: string; allow_always: boolean }
   | { kind: "question"; id: string; title: string; questions: Question[] };
 type Snapshot = {
-  schema_version: 1; instance_id: string; provider_session_id: string; writer_pid: number;
-  revision: number; status: "running" | "waiting" | "idle" | "error"; reply_keys: Key[]; prompt: Prompt | null;
+  schema_version: 1; instance_id: string; provider_version: string; provider_session_id: string; writer_pid: number;
+  revision: number; status: "running" | "waiting" | "idle" | "error"; reply_keys: string[]; prompt: Prompt | null;
 };
 type Reply = {
   schema_version: 1; instance_id: string; provider_session_id: string; writer_pid: number;
@@ -135,7 +135,7 @@ export function observeAskDialog(nativeAsk: AskDialog, observer: AskObserver): A
     let pending = true;
     let externalAnswer = false;
     const accept = (result: ExtensionAskDialogResult): boolean => {
-      if (!pending || externalAnswer) return false;
+      if (!pending || externalAnswer || options?.signal?.aborted) return false;
       externalAnswer = true;
       pending = false;
       controller.abort();
@@ -224,8 +224,9 @@ export default function (pi: ExtensionAPI): void {
   let cancelBindings: string[] = [];
   let handledPromptId: string | undefined;
 
-  const currentSnapshot = (): Snapshot => ({ schema_version: 1, instance_id: instanceId, provider_session_id: sessionId,
-    writer_pid: process.pid, revision, status, reply_keys: [KEY], prompt });
+  let providerVersion = "";
+  const currentSnapshot = (): Snapshot => ({ schema_version: 1, instance_id: instanceId, provider_version: providerVersion, provider_session_id: sessionId,
+    writer_pid: process.pid, revision, status, reply_keys: [KEY.value], prompt });
   let writeQueue = Promise.resolve();
   const writeSnapshot = (): Promise<void> => {
     writeQueue = writeQueue.then(async () => {
@@ -279,6 +280,11 @@ export default function (pi: ExtensionAPI): void {
 
   pi.on("session_start", async (_event, ctx) => {
     sessionId = ctx.sessionManager.getSessionId();
+    if (!sessionId) return;
+    let versionOutput: string;
+    try { versionOutput = execFileSync("omp", ["--version"], { encoding: "utf8", timeout: 1000 }).trim(); }
+    catch { return; }
+    providerVersion = versionOutput.match(/\b\d+\.\d+\.\d+\b/)?.[0] ?? "";
     try {
       const [{ appApproveKeys }, { getKeybindings }] = await Promise.all([
         import("@oh-my-pi/pi-tui/keybinding-matchers"),

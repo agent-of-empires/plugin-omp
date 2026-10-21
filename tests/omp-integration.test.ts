@@ -10,10 +10,11 @@ const snapshot = {
   schema_version: 1 as const,
   instance_id: "instance-a",
   provider_session_id: "session-a",
+  provider_version: "18.10.3",
   writer_pid: 123,
   revision: 7,
   status: "waiting" as const,
-  reply_keys: [{ kind: "named" as const, value: "F12" as const }],
+  reply_keys: ["F12"],
   prompt: { kind: "question" as const, id: "prompt-a", title: "Choose", questions },
 };
 const validReply = {
@@ -77,6 +78,21 @@ test("outer tool cancellation propagates into the native dialog", async () => {
   await expect(result).resolves.toBeUndefined();
   expect(parent.signal.aborted).toBe(true);
   expect(childSignal?.aborted).toBe(true);
+});
+
+test("parent cancellation rejects sidebar answers before native cancellation settles", async () => {
+  let accept!: (value: typeof answer) => boolean;
+  const native = Promise.withResolvers<typeof answer | undefined>();
+  const parent = new AbortController();
+  const dialog = observeAskDialog(() => native.promise, {
+    open(_id, _questions, submit) { accept = submit as typeof accept; },
+    close() {},
+  });
+  const result = dialog(questions, { signal: parent.signal });
+  parent.abort();
+  expect(accept(answer)).toBe(false);
+  native.resolve(undefined);
+  expect(await result).toBeUndefined();
 });
 
 test("rejects stale, wrong-session, wrong-prompt, and invalid question envelopes", () => {

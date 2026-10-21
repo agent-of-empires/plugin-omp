@@ -18,10 +18,17 @@ export default function (pi: ExtensionAPI): void {
         try {
           const report = JSON.parse(readFileSync(reportPath, "utf8")) as {
             instance_id?: string;
+            provider_session_id?: string;
+            provider_version?: string;
             writer_pid?: number;
             status?: string;
+            reply_keys?: string[];
           };
-          if (report.instance_id === instanceId && report.writer_pid === process.pid && report.status === "running") {
+          if (report.instance_id === instanceId && typeof report.provider_session_id === "string" &&
+              report.provider_session_id.length > 0 &&
+              /^18\.(10\.[34]|11\.[13])$/.test(report.provider_version ?? "") &&
+              report.writer_pid === process.pid && report.status === "running" &&
+              JSON.stringify(report.reply_keys) === JSON.stringify(["F12"])) {
             writeFileSync(marker, "integration-snapshot-ok\n", { mode: 0o600 });
             return;
           }

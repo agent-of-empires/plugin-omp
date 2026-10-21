@@ -31,7 +31,7 @@ if env -i \
   XDG_CACHE_HOME="$tmp_home/cache" \
   AOE_INSTANCE_ID="$instance_id" \
   OMP_SMOKE_MARKER="$marker" \
-  "$omp_bin" --model openai/gpt-5.2 --extension "$plugin_dir/index.ts" --extension "$smoke_extension" --print "native extension smoke" >"$log" 2>&1; then
+  "$omp_bin" --model openai/gpt-5.2 --mode rpc --extension "$plugin_dir/index.ts" --extension "$smoke_extension" </dev/null >"$log" 2>&1; then
   :
 elif [ ! -f "$marker" ]; then
   cat "$log" >&2
