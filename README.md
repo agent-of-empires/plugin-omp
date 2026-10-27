@@ -7,9 +7,13 @@ Provider-native OMP session status and explicit approval/question replies in AoE
 This repository contains two independently installed artifacts:
 
 - `aoe-plugin.toml` is the AoE plugin manifest. Install it from the repository root with `aoe plugin install .` and approve its `session.integration` capability through AoE's normal install flow.
-- `omp-extension/` is the provider-native OMP extension. Install it separately with `omp plugin install "$PWD/omp-extension"`. Both artifacts declare the OMP provider versions `>=18.10.3, <=18.10.4`, `18.11.1`, and `18.11.3`; the extension peer dependencies and AoE manifest use the same bounded ranges.
+- `omp-extension/` is the provider-native OMP extension. Install it separately with `omp plugin install "$PWD/omp-extension"`. Both artifacts allowlist OMP versions `18.10.4`, `18.11.1`, and `18.11.3`; `18.10.3` lacks the approval-key API required by the native reply bridge.
 
-This companion requires AoE's API 19 native-report/reply host layer; the launch/discovery-only foundation does not provide its report or reply transport. The host implementation is tracked separately in [agent-of-empires/agent-of-empires#4783](https://github.com/agent-of-empires/agent-of-empires/pull/4783); this cross-repository dependency is not a GitHub stacked-PR base.
+The disposable-HOME report smoke passed on each allowlisted release. `18.11.2` and `18.12.x` remain excluded because this extension/runtime combination has not been verified there; this is not a claim of known incompatibility.
+
+This companion depends on the native report/reply host work in [#4783](https://github.com/agent-of-empires/agent-of-empires/pull/4783) and the generic launch contract in [#4782](https://github.com/agent-of-empires/agent-of-empires/pull/4782). AoE main currently uses API 19 without `agent_integrations`. Do not install or merge this manifest until the changes from both host pull requests have landed; launch/discovery alone does not provide report/reply transport. This is a cross-repository dependency, not a GitHub stacked-PR base.
+
+The manifest declares the generic launch contract: `tool = "omp"`, `command = "omp"`, and `resume_arg = "--resume {session_id}"`. The host's stored resume argument remains authoritative; the provider session ID in reports is correlation only.
 
 Install each artifact with its own plugin manager. Existing OMP sessions do not load newly installed extensions; restart the OMP process or start a new OMP session.
 
@@ -32,6 +36,8 @@ The runtime smoke uses an isolated disposable `HOME`, exercises OMP extension lo
 ```bash
 OMP_BIN=omp ./tests/omp-native-smoke.sh
 ```
+
+Set `OMP_BIN` to one of the supported versions above when the default `omp` executable differs.
 
 This is a focused OMP example, not a general provider-extension bridge or a marketplace bundle. Coordinated installation, upgrades, and release packaging are out of scope.
 
