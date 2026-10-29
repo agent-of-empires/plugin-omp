@@ -37,7 +37,7 @@ The runtime smoke uses an isolated disposable `HOME`, exercises OMP extension lo
 OMP_BIN=omp ./tests/omp-native-smoke.sh
 ```
 
-Set `OMP_BIN` to one of the supported versions above when the default `omp` executable differs.
+Set `OMP_BIN` to the command or path of an installed supported OMP release when the default `omp` executable differs.
 
 This is a focused OMP example, not a general provider-extension bridge or a marketplace bundle. Coordinated installation, upgrades, and release packaging are out of scope.
 
