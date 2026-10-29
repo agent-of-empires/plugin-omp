@@ -1,6 +1,8 @@
 import { expect, test } from "bun:test";
-import { ensurePrivateDirectories, integrationDirectory, nativeApprovalKey, observeApproval, observeAskDialog, validateReply } from "../omp-extension/index.ts";
-import { chmodSync, mkdtempSync, rmSync, statSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import ompExtension, { ensurePrivateDirectories, integrationDirectory, nativeApprovalKey, observeApproval, observeAskDialog, validateReply } from "../omp-extension/index.ts";
+import { randomUUID } from "node:crypto";
+import { chmodSync, existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -10,10 +12,11 @@ const snapshot = {
   schema_version: 1 as const,
   instance_id: "instance-a",
   provider_session_id: "session-a",
+  provider_version: "18.10.4",
   writer_pid: 123,
   revision: 7,
   status: "waiting" as const,
-  reply_keys: [{ kind: "named" as const, value: "F12" as const }],
+  reply_keys: ["F12"],
   prompt: { kind: "question" as const, id: "prompt-a", title: "Choose", questions },
 };
 const validReply = {
@@ -79,6 +82,21 @@ test("outer tool cancellation propagates into the native dialog", async () => {
   expect(childSignal?.aborted).toBe(true);
 });
 
+test("parent cancellation rejects sidebar answers before native cancellation settles", async () => {
+  let accept!: (value: typeof answer) => boolean;
+  const native = Promise.withResolvers<typeof answer | undefined>();
+  const parent = new AbortController();
+  const dialog = observeAskDialog(() => native.promise, {
+    open(_id, _questions, submit) { accept = submit as typeof accept; },
+    close() {},
+  });
+  const result = dialog(questions, { signal: parent.signal });
+  parent.abort();
+  expect(accept(answer)).toBe(false);
+  native.resolve(undefined);
+  expect(await result).toBeUndefined();
+});
+
 test("rejects stale, wrong-session, wrong-prompt, and invalid question envelopes", () => {
   expect(validateReply(validReply, snapshot)).toBe(true);
   const variants = [
@@ -95,6 +113,13 @@ test("rejects stale, wrong-session, wrong-prompt, and invalid question envelopes
     { ...validReply, response: { kind: "question", answers: [{ id: "q1", selected_options: [], custom_input: " " }] } },
   ];
   for (const value of variants) expect(validateReply(value, snapshot)).toBe(false);
+  expect(validateReply({
+    ...validReply,
+    response: { kind: "question", answers: [
+      { id: "q1", selected_options: ["two"] },
+      { id: "q1", selected_options: ["two"] },
+    ] },
+  }, snapshot)).toBe(false);
 });
 test("allow_always replies require native prompt support", () => {
   const approvalSnapshot = {
@@ -138,5 +163,62 @@ test("provider creates owner-only directories and uses the shared /tmp hook path
     expect(await ensurePrivateDirectories(root, dir, uid)).toBe(false);
   } finally {
     rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
+test("extension registers no hooks outside an AoE instance", () => {
+  const previousInstanceId = process.env.AOE_INSTANCE_ID;
+  const previousPane = process.env.TMUX_PANE;
+  delete process.env.AOE_INSTANCE_ID;
+  delete process.env.TMUX_PANE;
+  const registered: string[] = [];
+  const pi = { on(event: string) { registered.push(event); } } as unknown as Parameters<typeof ompExtension>[0];
+  try {
+    ompExtension(pi);
+    expect(registered).toEqual([]);
+  } finally {
+    if (previousInstanceId === undefined) delete process.env.AOE_INSTANCE_ID;
+    else process.env.AOE_INSTANCE_ID = previousInstanceId;
+    if (previousPane === undefined) delete process.env.TMUX_PANE;
+    else process.env.TMUX_PANE = previousPane;
+  }
+});
+
+test("does not publish when the loaded OMP version is unavailable despite a supported PATH version", () => {
+  const instanceId = `version-missing-${process.pid}-${randomUUID()}`;
+  const scratch = mkdtempSync(path.join(tmpdir(), "omp-version-missing-"));
+  const reportPath = path.join(integrationDirectory(process.getuid(), instanceId), "integration-omp.agent-of-empires.json");
+  const extensionPath = path.resolve(import.meta.dir, "../omp-extension/index.ts");
+  const script = `
+import { mock } from "bun:test";
+import { existsSync } from "node:fs";
+import path from "node:path";
+mock.module("@oh-my-pi/pi-coding-agent", () => ({}));
+const { default: ompExtension, integrationDirectory } = await import(${JSON.stringify(extensionPath)});
+const instanceId = process.env.AOE_INSTANCE_ID;
+const handlers = new Map();
+const pi = { on(event, handler) { if (typeof handler === "function") handlers.set(event, handler); } };
+ompExtension(pi);
+await handlers.get("session_start")?.({}, {
+  sessionManager: { getSessionId: () => "provider-session" },
+  ui: { onTerminalInput: () => () => {} },
+});
+handlers.get("agent_start")?.();
+await new Promise(resolve => setTimeout(resolve, 10));
+const reportPath = path.join(integrationDirectory(process.getuid(), instanceId), "integration-omp.agent-of-empires.json");
+const published = existsSync(reportPath);
+await Promise.resolve(handlers.get("session_shutdown")?.());
+if (published) process.exit(1);
+`;
+  try {
+    writeFileSync(path.join(scratch, "omp"), "#!/bin/sh\nprintf 'omp/18.11.3\\n'\n", { mode: 0o700 });
+    execFileSync(process.execPath, ["-e", script], {
+      encoding: "utf8",
+      env: { ...process.env, PATH: scratch, AOE_INSTANCE_ID: instanceId },
+    });
+    expect(existsSync(reportPath)).toBe(false);
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+    rmSync(path.dirname(reportPath), { recursive: true, force: true });
   }
 });

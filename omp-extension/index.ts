@@ -5,14 +5,13 @@ import { mkdir, open, rename, unlink } from "node:fs/promises";
 import path from "node:path";
 import type { ExtensionAPI, ExtensionAskDialogQuestion, ExtensionAskDialogResult, ExtensionUIDialogOptions } from "@oh-my-pi/pi-coding-agent/extensibility/extensions";
 
-type Key = { kind: "named"; value: "F12" };
 type Question = { id: string; question: string; options: { label: string; description?: string }[]; multi?: boolean; recommended?: number };
 type Prompt =
   | { kind: "approval"; id: string; title: string; allow_always: boolean }
   | { kind: "question"; id: string; title: string; questions: Question[] };
 type Snapshot = {
-  schema_version: 1; instance_id: string; provider_session_id: string; writer_pid: number;
-  revision: number; status: "running" | "waiting" | "idle" | "error"; reply_keys: Key[]; prompt: Prompt | null;
+  schema_version: 1; instance_id: string; provider_version: string; provider_session_id: string; writer_pid: number;
+  revision: number; status: "running" | "waiting" | "idle" | "error"; reply_keys: string[]; prompt: Prompt | null;
 };
 type Reply = {
   schema_version: 1; instance_id: string; provider_session_id: string; writer_pid: number;
@@ -26,7 +25,7 @@ const SNAPSHOT_NAME = "integration-omp.agent-of-empires.json";
 const REPLY_NAME = "integration-omp.agent-of-empires.reply.json";
 const HEARTBEAT_MS = 5_000;
 const MAX_REPLY_BYTES = 1_048_576;
-const KEY: Key = { kind: "named", value: "F12" };
+const REPLY_KEY = "F12";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -135,7 +134,7 @@ export function observeAskDialog(nativeAsk: AskDialog, observer: AskObserver): A
     let pending = true;
     let externalAnswer = false;
     const accept = (result: ExtensionAskDialogResult): boolean => {
-      if (!pending || externalAnswer) return false;
+      if (!pending || externalAnswer || options?.signal?.aborted) return false;
       externalAnswer = true;
       pending = false;
       controller.abort();
@@ -224,10 +223,12 @@ export default function (pi: ExtensionAPI): void {
   let cancelBindings: string[] = [];
   let handledPromptId: string | undefined;
 
-  const currentSnapshot = (): Snapshot => ({ schema_version: 1, instance_id: instanceId, provider_session_id: sessionId,
-    writer_pid: process.pid, revision, status, reply_keys: [KEY], prompt });
+  let providerVersion = "";
+  const currentSnapshot = (): Snapshot => ({ schema_version: 1, instance_id: instanceId, provider_version: providerVersion, provider_session_id: sessionId,
+    writer_pid: process.pid, revision, status, reply_keys: [REPLY_KEY], prompt });
   let writeQueue = Promise.resolve();
   const writeSnapshot = (): Promise<void> => {
+    if (!providerVersion) return writeQueue;
     writeQueue = writeQueue.then(async () => {
       let temporary: string | undefined;
       try {
@@ -279,6 +280,12 @@ export default function (pi: ExtensionAPI): void {
 
   pi.on("session_start", async (_event, ctx) => {
     sessionId = ctx.sessionManager.getSessionId();
+    if (!sessionId) return;
+    try {
+      const { VERSION } = await import("@oh-my-pi/pi-coding-agent");
+      if (!VERSION) return;
+      providerVersion = VERSION;
+    } catch { return; }
     try {
       const [{ appApproveKeys }, { getKeybindings }] = await Promise.all([
         import("@oh-my-pi/pi-tui/keybinding-matchers"),
