@@ -41,6 +41,14 @@ Set `OMP_BIN` to the command or path of an installed supported OMP release when 
 
 This is a focused OMP example, not a general provider-extension bridge or a marketplace bundle. Coordinated installation, upgrades, and release packaging are out of scope.
 
+## Releasing
+
+Push a `vX.Y.Z` tag. `release.yml` runs the extension tests and publishes the source archive plus its sha256, then its `featured-pr` job downloads the latest AoE binary, computes the released source tree hash with `aoe plugin hash`, and opens a PR against `agent-of-empires/agent-of-empires` adding that pin to `plugins/featured.toml`.
+
+The job needs an `AOE_FEATURED_PR_TOKEN` secret with cross-repo PR write access and runs behind the `release` environment. Without the secret the release still publishes and the job skips with a warning. The pin PR is reviewed and merged like any other trust-root change; it is never auto-merged. Until it lands, installs of the new version validate as community.
+
+The manifest `version` and the tag must agree. The source tree hash is computed from the tagged commit, so retagging or amending the release commit requires a new pin.
+
 ## License
 
 MIT

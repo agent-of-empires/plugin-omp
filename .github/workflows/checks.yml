@@ -22,6 +22,15 @@ jobs:
           print("aoe-plugin.toml parses as TOML")
           PY
 
+  featured-index:
+    name: Featured-index updater tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 tests/test_featured_index.py
+
   omp-extension:
     name: OMP extension tests
     runs-on: ubuntu-latest
