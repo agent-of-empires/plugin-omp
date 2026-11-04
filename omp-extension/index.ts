@@ -294,6 +294,11 @@ export default function (pi: ExtensionAPI): void {
       approvalBindings = [...appApproveKeys()];
       cancelBindings = [...getKeybindings().getKeys("tui.select.cancel")];
     } catch { /* Native approval remains available when key observation fails. */ }
+    // A brew OMP install exposes no resolvable @oh-my-pi/pi-tui, so the import
+    // above fails and leaves both lists empty. Fall back to the bindings the
+    // native approval prompt itself advertises.
+    if (approvalBindings.length === 0) approvalBindings = ["ctrl+enter"];
+    if (cancelBindings.length === 0) cancelBindings = ["escape"];
     const ui = ctx.ui;
     if (ui.askDialog) {
       const nativeAsk = ui.askDialog.bind(ui);
