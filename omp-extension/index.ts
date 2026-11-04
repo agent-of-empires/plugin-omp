@@ -287,12 +287,11 @@ export default function (pi: ExtensionAPI): void {
       providerVersion = VERSION;
     } catch { return; }
     try {
-      const [{ appApproveKeys }, { getKeybindings }] = await Promise.all([
-        import("@oh-my-pi/pi-tui/keybinding-matchers"),
-        import("@oh-my-pi/pi-tui/keybindings"),
-      ]);
-      approvalBindings = [...appApproveKeys()];
-      cancelBindings = [...getKeybindings().getKeys("tui.select.cancel")];
+      // omp injects its SDK through pi, and that keymap is what the native
+      // approval prompt renders, so the reply uses omp's own keys.
+      const keymap = pi.pi.KeybindingsManager.create();
+      approvalBindings = [...keymap.getKeys("app.approval.approve")];
+      cancelBindings = [...keymap.getKeys("tui.select.cancel")];
     } catch { /* Native approval remains available when key observation fails. */ }
     const ui = ctx.ui;
     if (ui.askDialog) {
