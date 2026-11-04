@@ -11,9 +11,9 @@ This repository contains two independently installed artifacts:
 
 The disposable-HOME report smoke passed on each allowlisted release. `18.11.2` and `18.12.x` remain excluded because this extension/runtime combination has not been verified there; this is not a claim of known incompatibility.
 
-This companion depends on the native report/reply host work in [#4783](https://github.com/agent-of-empires/agent-of-empires/pull/4783) and the generic launch contract in [#4782](https://github.com/agent-of-empires/agent-of-empires/pull/4782). AoE main currently uses API 19 without `agent_integrations`. Do not install or merge this manifest until the changes from both host pull requests have landed; launch/discovery alone does not provide report/reply transport. This is a cross-repository dependency, not a GitHub stacked-PR base.
+Installation requires an AoE build containing both the generic launch/discovery contract from [#4782](https://github.com/agent-of-empires/agent-of-empires/pull/4782) and the native report/reply transport from [#4783](https://github.com/agent-of-empires/agent-of-empires/pull/4783). Both are merged into AoE main as of 2026-11-04; use merge commit `b1e7d28b` or a descendant containing both changes. API 19 alone is not sufficient.
 
-The manifest declares the generic launch contract: `tool = "omp"`, `command = "omp"`, and `resume_arg = "--resume {session_id}"`. The host's stored resume argument remains authoritative; the provider session ID in reports is correlation only.
+The manifest declares `tool = "omp"`, `command = "omp"`, bounded `provider_versions`, and `replies = true`. Resume remains native in AoE; the host's stored resume argument remains authoritative, and the provider session ID in reports is correlation only. Saved-session identity and resume must keep working before native OMP capture is removed ([#4571](https://github.com/agent-of-empires/agent-of-empires/issues/4571)).
 
 Install each artifact with its own plugin manager. Existing OMP sessions do not load newly installed extensions; restart the OMP process or start a new OMP session.
 

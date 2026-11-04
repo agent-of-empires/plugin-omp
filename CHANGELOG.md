@@ -11,3 +11,7 @@ The format follows [Conventional Commits](https://www.conventionalcommits.org/).
 - Read the loaded OMP package version and align provider support bounds with the native reply API.
 - Match schema-1 report fields and reject external question answers after parent cancellation.
 - Run the disposable-HOME native smoke without a model turn.
+
+### Fixed
+- Remove unsupported `resume_arg` metadata so the manifest installs on the merged API 19 host; resume remains native in AoE.
+- Replace the stale host-merge warning with the actual launch/discovery and report/reply installation requirements.
