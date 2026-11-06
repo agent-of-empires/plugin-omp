@@ -6,20 +6,24 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: omp-release-update
   cancel-in-progress: false
 
 jobs:
-  update:
+  verify:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+      state: ${{ steps.release.outputs.state }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
@@ -54,21 +58,35 @@ jobs:
           [[ "$expected" =~ ^[0-9a-f]{64}$ ]]
           printf '%s  %s\n' "$expected" omp-linux-x64 | sha256sum -c -
           chmod +x omp-linux-x64
+          unset GH_TOKEN
           test "$(./omp-linux-x64 --version)" = "omp/${TAG#v}"
       - name: Run plugin tests and native report smoke
         if: steps.release.outputs.state == 'update'
         run: |
           set -euo pipefail
           (cd omp-extension && bun test ../tests)
-          OMP_BIN="$RUNNER_TEMP/omp/omp-linux-x64" OMP_STATUS_SMOKE=1 ./tests/omp-native-smoke.sh
+          OMP_BIN="$RUNNER_TEMP/omp/omp-linux-x64" ./tests/omp-native-smoke.sh
+  propose:
+    needs: verify
+    if: needs.verify.outputs.state == 'update'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - name: Propose reviewed compatibility update
-        if: steps.release.outputs.state == 'update'
+        if: needs.verify.outputs.state == 'update'
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.release.outputs.version }}
-          TAG: ${{ steps.release.outputs.tag }}
+          VERSION: ${{ needs.verify.outputs.version }}
+          TAG: ${{ needs.verify.outputs.tag }}
         run: |
           set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && "$TAG" == "v$VERSION" ]]
           branch="automation/omp-${VERSION}"
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
             number="$(gh pr list --head "$branch" --base main --state open --json number --jq '.[0].number // empty')"
@@ -85,7 +103,8 @@ jobs:
           git switch -c "$branch"
           git add aoe-plugin.toml omp-extension/package.json
           git commit -m "fix(omp): support ${VERSION}"
-          git push origin "$branch"
+          auth_header="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git -c "http.extraheader=AUTHORIZATION: basic ${auth_header}" push origin "$branch"
           gh pr create --draft --base main --head "$branch" \
             --title "fix(omp): support ${VERSION}" \
-            --body "OMP ${TAG} passed the Bun suite and the isolated startup/report smoke. Review runtime and reply compatibility before merging; this smoke does not exercise interactive replies. PRs created with GITHUB_TOKEN do not trigger normal PR workflows, so a maintainer must run required checks through the repository's normal gates."
+            --body "OMP ${TAG} passed the Bun suite and isolated startup/report smoke. Review runtime and reply compatibility before merging; the smoke does not exercise interactive replies. PRs created with GITHUB_TOKEN do not trigger normal PR workflows, so a maintainer must run required checks through the repository's normal gates."

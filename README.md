@@ -41,11 +41,9 @@ OMP_BIN=omp ./tests/omp-native-smoke.sh
 
 Set `OMP_BIN` to the command or path of an installed supported OMP release when the default `omp` executable differs.
 
-For OMP releases supporting `session_stop` continuations, set `OMP_STATUS_SMOKE=1` to additionally run an offline scripted model turn and verify a fresh running report during a real continuation. The basic smoke does not verify interactive replies.
-
 ### OMP release updates
 
-After this workflow is merged, `.github/workflows/omp-updates.yml` checks the latest stable [OMP release](https://github.com/can1357/oh-my-pi/releases) daily or on manual dispatch. For a version absent from both allowlists, it verifies the published Linux binary checksum, runs the full Bun suite and both native smokes, and opens a draft PR updating the two bounds. Existing branches are never overwritten. Review runtime and interactive reply compatibility before merging: the smoke does not exercise replies. A PR created with `GITHUB_TOKEN` does not trigger normal PR workflows; a maintainer must run the repository's required checks through its normal gates. The workflow needs Actions enabled and permission for GitHub Actions to create pull requests; it does not merge or release.
+After this workflow is merged, `.github/workflows/omp-updates.yml` checks the latest stable [OMP release](https://github.com/can1357/oh-my-pi/releases) daily or on manual dispatch. For a version absent from both allowlists, it verifies the published Linux binary checksum, runs the full Bun suite and native startup smoke, and opens a draft PR updating the two bounds. Existing branches are never overwritten. Review runtime and interactive reply compatibility before merging: the smoke does not exercise replies. A PR created with `GITHUB_TOKEN` does not trigger normal PR workflows; a maintainer must run the repository's required checks through its normal gates. The workflow needs Actions enabled and permission for GitHub Actions to create pull requests; it does not merge or release.
 
 This is a focused OMP example, not a general provider-extension bridge or a marketplace bundle. Coordinated installation, upgrades, and release packaging are out of scope.
 

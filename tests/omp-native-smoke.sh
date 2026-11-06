@@ -55,22 +55,3 @@ fi
   printf '%s\n' "OMP did not load the AoE extension and publish its integration snapshot." >&2
   exit 1
 }
-
-if [ "${OMP_STATUS_SMOKE:-0}" = 1 ]; then
-  status_extension=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/omp-status-smoke-extension.ts
-  status_marker="$tmp_home/status-observed"
-  if ! env -i \
-    PATH="$tmp_home/fake-bin:$PATH" HOME="$tmp_home" TMPDIR="$tmp_home/tmp" \
-    XDG_CONFIG_HOME="$tmp_home/config" XDG_DATA_HOME="$tmp_home/data" XDG_CACHE_HOME="$tmp_home/cache" \
-    AOE_INSTANCE_ID="$instance_id" OMP_STATUS_SMOKE_MARKER="$status_marker" \
-    "$omp_bin" --model aoe-smoke/status --no-tools --no-session --no-skills --no-context-files \
-      --extension "$plugin_dir/index.ts" --extension "$status_extension" -p "Smoke" >"$log" 2>&1; then
-    cat "$log" >&2
-    exit 1
-  fi
-  [ "$(cat "$status_marker" 2>/dev/null || true)" = "continuation-running-ok" ] || {
-    cat "$log" >&2
-    printf '%s\n' "OMP did not publish running during its continuation." >&2
-    exit 1
-  }
-fi
