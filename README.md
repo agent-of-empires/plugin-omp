@@ -7,9 +7,9 @@ Provider-native OMP session status and explicit approval/question replies in AoE
 This repository contains two independently installed artifacts:
 
 - `aoe-plugin.toml` is the AoE plugin manifest. Install it from the repository root with `aoe plugin install .` and approve its `session.integration` capability through AoE's normal install flow.
-- `omp-extension/` is the provider-native OMP extension. Install it separately with `omp plugin install "$PWD/omp-extension"`. Both artifacts allowlist OMP versions `18.10.4`, `18.11.1`, and `18.11.3`; `18.10.3` lacks the approval-key API required by the native reply bridge.
+- `omp-extension/` is the provider-native OMP extension. Install it separately with `omp plugin install "$PWD/omp-extension"`. Both artifacts support stable OMP releases from `18.10.4` up to, but excluding, `19.0.0`; `18.10.3` lacks the approval-key API required by the native reply bridge.
 
-The disposable-HOME report smoke passed on each allowlisted release. `18.11.2` and `18.12.x` remain excluded because this extension/runtime combination has not been verified there; this is not a claim of known incompatibility.
+Future OMP 18.x releases are assumed compatible under SemVer; regressions will be patched as needed. Prereleases are excluded by the version requirements. The disposable-HOME report smoke previously passed on `18.10.4`, `18.11.1`, and `18.11.3`; not every supported release has been individually verified.
 
 This companion depends on the native report/reply host work in [#4783](https://github.com/agent-of-empires/agent-of-empires/pull/4783) and the generic launch contract in [#4782](https://github.com/agent-of-empires/agent-of-empires/pull/4782). AoE main currently uses API 19 without `agent_integrations`. Do not install or merge this manifest until the changes from both host pull requests have landed; launch/discovery alone does not provide report/reply transport. This is a cross-repository dependency, not a GitHub stacked-PR base.
 

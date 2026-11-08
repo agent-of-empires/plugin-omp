@@ -28,7 +28,7 @@ export default function (pi: ExtensionAPI): void {
           if (report.instance_id === instanceId && typeof report.provider_session_id === "string" &&
               report.provider_session_id.length > 0 &&
               report.provider_version === expectedVersion &&
-              /^18\.(10\.4|11\.[13])$/.test(report.provider_version ?? "") &&
+              Bun.semver.satisfies(report.provider_version ?? "", ">=18.10.4 <19.0.0") &&
               report.writer_pid === process.pid && report.status === "running" &&
               JSON.stringify(report.reply_keys) === JSON.stringify(["F12"])) {
             writeFileSync(marker, "integration-snapshot-ok\n", { mode: 0o600 });
