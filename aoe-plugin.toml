@@ -1,7 +1,7 @@
 id = "omp.agent-of-empires"
 name = "Oh My Pi Integration"
-version = "0.3.0"
-api_version = 19
+version = "0.4.2"
+api_version = 20
 description = "OMP-native session status and explicit approval/question replies through AoE's terminal session list. Requires the separately installed OMP runtime plugin."
 capabilities = ["session.integration"]
 
@@ -10,3 +10,28 @@ tool = "omp"
 provider_versions = [">=18.10.4, <19.0.0"]
 command = "omp"
 replies = true
+
+[agent_integrations.launch]
+oneshot_flag = "-p"
+instruction_flag = "--append-system-prompt {}"
+model_flag = "--model"
+install_hint = "curl -fsSL https://omp.sh/install | sh"
+
+[agent_integrations.launch.yolo]
+kind = "flag"
+flag = "--auto-approve"
+
+[agent_integrations.launch.container_env]
+PI_CODING_AGENT_DIR = "/root/.omp/agent"
+
+[agent_integrations.launch.resume]
+kind = "flag"
+flag = "--resume"
+
+[agent_integrations.launch.capture]
+backend = "omp"
+host = "pane_scoped"
+sandbox = "pane_scoped"
+
+[agent_integrations.detection]
+mode = "native_only"

@@ -11,9 +11,9 @@ This repository contains two independently installed artifacts:
 
 Future OMP 18.x releases are assumed compatible under SemVer; regressions will be patched as needed. Prereleases are excluded by the version requirements. The disposable-HOME report smoke previously passed on `18.10.4`, `18.11.1`, `18.11.3`, and `18.16.0`; not every supported release has been individually verified.
 
-Installation requires an AoE build containing both the generic launch/discovery contract from [#4782](https://github.com/agent-of-empires/agent-of-empires/pull/4782) and the native report/reply transport from [#4783](https://github.com/agent-of-empires/agent-of-empires/pull/4783). Both are merged into AoE main as of 2026-11-04; use merge commit `b1e7d28b` or a descendant containing both changes. API 19 alone is not sufficient.
+This companion depends on the native report/reply and API 20 agent extraction in [AoE #5380](https://github.com/agent-of-empires/agent-of-empires/pull/5380). Install it on an AoE host that includes that contract; this is a cross-repository dependency, not a GitHub stacked-PR base.
 
-The manifest declares `tool = "omp"`, `command = "omp"`, bounded `provider_versions`, and `replies = true`. Resume remains native in AoE; the host's stored resume argument remains authoritative, and the provider session ID in reports is correlation only. Saved-session identity and resume must keep working before native OMP capture is removed ([#4571](https://github.com/agent-of-empires/agent-of-empires/issues/4571)).
+The manifest declares OMP's command, launch flags, sandbox environment, resume and capture behavior, and native-only status detection. The provider session ID in reports is correlation only.
 
 Install each artifact with its own plugin manager. Existing OMP sessions do not load newly installed extensions; restart the OMP process or start a new OMP session.
 
@@ -32,6 +32,8 @@ The AoE manifest grant authorizes AoE's integration report and reply path; it do
 ```bash
 cd omp-extension && bun test ../tests
 ```
+
+Validate the manifest against the pinned AoE API 20 schema with `cargo test --locked --manifest-path tests/manifest/Cargo.toml`.
 
 The runtime smoke uses an isolated disposable `HOME`, exercises OMP extension loading and report publication without submitting a prompt to a model, and does not modify the user's OMP configuration:
 
