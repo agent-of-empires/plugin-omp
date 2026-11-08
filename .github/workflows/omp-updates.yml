@@ -15,14 +15,9 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    outputs:
-      tag: ${{ steps.release.outputs.tag }}
-      version: ${{ steps.release.outputs.version }}
-      state: ${{ steps.release.outputs.state }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           persist-credentials: false
       - uses: oven-sh/setup-bun@v2
         with:
@@ -39,14 +34,15 @@ jobs:
             exit 1
           fi
           version="${tag#v}"
-          state="$(node scripts/update-omp-version.mjs check "$version")"
-          {
-            echo "tag=$tag"
-            echo "version=$version"
-            echo "state=$state"
-          } >> "$GITHUB_OUTPUT"
+          if VERSION="$version" bun -e 'const p = await Bun.file("omp-extension/package.json").json(); process.exit(Bun.semver.satisfies(process.env.VERSION, p.peerDependencies["@oh-my-pi/pi-coding-agent"]) ? 0 : 1)'; then
+            echo "supported=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::OMP $tag is outside the supported range; review compatibility manually"
+            echo "supported=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - name: Download and verify released OMP
-        if: steps.release.outputs.state == 'update'
+        if: steps.release.outputs.supported == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.release.outputs.tag }}
@@ -61,50 +57,8 @@ jobs:
           unset GH_TOKEN
           test "$(./omp-linux-x64 --version)" = "omp/${TAG#v}"
       - name: Run plugin tests and native report smoke
-        if: steps.release.outputs.state == 'update'
+        if: steps.release.outputs.supported == 'true'
         run: |
           set -euo pipefail
           (cd omp-extension && bun test ../tests)
           OMP_BIN="$RUNNER_TEMP/omp/omp-linux-x64" ./tests/omp-native-smoke.sh
-  propose:
-    needs: verify
-    if: needs.verify.outputs.state == 'update'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Propose reviewed compatibility update
-        if: needs.verify.outputs.state == 'update'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.verify.outputs.version }}
-          TAG: ${{ needs.verify.outputs.tag }}
-        run: |
-          set -euo pipefail
-          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && "$TAG" == "v$VERSION" ]]
-          branch="automation/omp-${VERSION}"
-          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
-            number="$(gh pr list --head "$branch" --base main --state open --json number --jq '.[0].number // empty')"
-            if [ -z "$number" ]; then
-              echo "::error::Branch $branch exists without an open PR; inspect it manually"
-              exit 1
-            fi
-            echo "::notice::Update PR #$number already exists"
-            exit 0
-          fi
-          node scripts/update-omp-version.mjs apply "$VERSION"
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git switch -c "$branch"
-          git add aoe-plugin.toml omp-extension/package.json
-          git commit -m "fix(omp): support ${VERSION}"
-          auth_header="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
-          git -c "http.extraheader=AUTHORIZATION: basic ${auth_header}" push origin "$branch"
-          gh pr create --draft --base main --head "$branch" \
-            --title "fix(omp): support ${VERSION}" \
-            --body "OMP ${TAG} passed the Bun suite and isolated startup/report smoke. Review runtime and reply compatibility before merging; the smoke does not exercise interactive replies. PRs created with GITHUB_TOKEN do not trigger normal PR workflows, so a maintainer must run required checks through the repository's normal gates."

@@ -7,9 +7,9 @@ Provider-native OMP session status and explicit approval/question replies in AoE
 This repository contains two independently installed artifacts:
 
 - `aoe-plugin.toml` is the AoE plugin manifest. Install it from the repository root with `aoe plugin install .` and approve its `session.integration` capability through AoE's normal install flow.
-- `omp-extension/` is the provider-native OMP extension. Install it separately with `omp plugin install "$PWD/omp-extension"`. Both artifacts allowlist OMP versions `18.10.4`, `18.11.1`, `18.11.3`, and `18.16.0`; `18.10.3` lacks the approval-key API required by the native reply bridge.
+- `omp-extension/` is the provider-native OMP extension. Install it separately with `omp plugin install "$PWD/omp-extension"`. Both artifacts support stable OMP releases from `18.10.4` up to, but excluding, `19.0.0`; `18.10.3` lacks the approval-key API required by the native reply bridge.
 
-The disposable-HOME report smoke passed on each allowlisted release, including `18.16.0`. `18.11.2` and `18.12.x` through `18.15.x` remain excluded because this extension/runtime combination has not been verified there; this is not a claim of known incompatibility.
+Future OMP 18.x releases are assumed compatible under SemVer; regressions will be patched as needed. Prereleases are excluded by the version requirements. The disposable-HOME report smoke previously passed on `18.10.4`, `18.11.1`, `18.11.3`, and `18.16.0`; not every supported release has been individually verified.
 
 This companion depends on the native report/reply and API 20 agent extraction in [AoE #5380](https://github.com/agent-of-empires/agent-of-empires/pull/5380). Install it on an AoE host that includes that contract; this is a cross-repository dependency, not a GitHub stacked-PR base.
 
@@ -45,7 +45,7 @@ Set `OMP_BIN` to the command or path of an installed supported OMP release when 
 
 ### OMP release updates
 
-After this workflow is merged, `.github/workflows/omp-updates.yml` checks the latest stable [OMP release](https://github.com/can1357/oh-my-pi/releases) daily or on manual dispatch. For a version absent from both allowlists, it verifies the published Linux binary checksum, runs the full Bun suite and native startup smoke, and opens a draft PR updating the two bounds. Existing branches are never overwritten. Review runtime and interactive reply compatibility before merging: the smoke does not exercise replies. A PR created with `GITHUB_TOKEN` does not trigger normal PR workflows; a maintainer must run the repository's required checks through its normal gates. The workflow needs Actions enabled and permission for GitHub Actions to create pull requests; it does not merge or release.
+`.github/workflows/omp-updates.yml` checks the latest stable [OMP release](https://github.com/can1357/oh-my-pi/releases) daily or on manual dispatch. For supported versions, it verifies the published Linux binary checksum and runs the full Bun suite and native startup smoke. An out-of-range release requires manual compatibility review; the smoke does not exercise interactive replies.
 
 This is a focused OMP example, not a general provider-extension bridge or a marketplace bundle. Coordinated installation, upgrades, and release packaging are out of scope.
 
