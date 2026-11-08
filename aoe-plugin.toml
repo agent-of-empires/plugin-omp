@@ -9,5 +9,4 @@ capabilities = ["session.integration"]
 tool = "omp"
 provider_versions = [">=18.10.4, <19.0.0"]
 command = "omp"
-resume_arg = "--resume {session_id}"
 replies = true

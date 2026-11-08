@@ -1,0 +1,64 @@
+name: Check OMP releases
+
+on:
+  schedule:
+    - cron: '23 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: omp-release-update
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Find latest stable release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="$(gh api repos/can1357/oh-my-pi/releases/latest --jq .tag_name)"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Unexpected OMP release tag: $tag"
+            exit 1
+          fi
+          version="${tag#v}"
+          if VERSION="$version" bun -e 'const p = await Bun.file("omp-extension/package.json").json(); process.exit(Bun.semver.satisfies(process.env.VERSION, p.peerDependencies["@oh-my-pi/pi-coding-agent"]) ? 0 : 1)'; then
+            echo "supported=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::OMP $tag is outside the supported range; review compatibility manually"
+            echo "supported=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - name: Download and verify released OMP
+        if: steps.release.outputs.supported == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release download "$TAG" --repo can1357/oh-my-pi --pattern 'omp-linux-x64' --pattern 'SHA256SUMS.txt' --dir "$RUNNER_TEMP/omp"
+          cd "$RUNNER_TEMP/omp"
+          expected="$(awk '$2 == "omp-linux-x64" || $2 == "*omp-linux-x64" { print $1 }' SHA256SUMS.txt)"
+          [[ "$expected" =~ ^[0-9a-f]{64}$ ]]
+          printf '%s  %s\n' "$expected" omp-linux-x64 | sha256sum -c -
+          chmod +x omp-linux-x64
+          unset GH_TOKEN
+          test "$(./omp-linux-x64 --version)" = "omp/${TAG#v}"
+      - name: Run plugin tests and native report smoke
+        if: steps.release.outputs.supported == 'true'
+        run: |
+          set -euo pipefail
+          (cd omp-extension && bun test ../tests)
+          OMP_BIN="$RUNNER_TEMP/omp/omp-linux-x64" ./tests/omp-native-smoke.sh

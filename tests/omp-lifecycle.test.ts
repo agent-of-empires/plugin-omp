@@ -58,11 +58,11 @@ test("native lifecycle events publish running and idle schema-1 snapshots", asyn
       reply_keys: ["F12"],
       prompt: null,
     });
-    handlers.get("agent_end")?.();
+    handlers.get("agent_end")?.({});
     const idle = await waitForStatus("idle", started.revision);
     handlers.get("agent_start")?.();
     const resumed = await waitForStatus("running", idle.revision);
-    handlers.get("agent_end")?.();
+    handlers.get("agent_end")?.({});
     const finished = await waitForStatus("idle", resumed.revision);
     expect([idle.revision, resumed.revision, finished.revision]).toEqual([
       started.revision + 1,

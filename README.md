@@ -9,11 +9,11 @@ This repository contains two independently installed artifacts:
 - `aoe-plugin.toml` is the AoE plugin manifest. Install it from the repository root with `aoe plugin install .` and approve its `session.integration` capability through AoE's normal install flow.
 - `omp-extension/` is the provider-native OMP extension. Install it separately with `omp plugin install "$PWD/omp-extension"`. Both artifacts support stable OMP releases from `18.10.4` up to, but excluding, `19.0.0`; `18.10.3` lacks the approval-key API required by the native reply bridge.
 
-Future OMP 18.x releases are assumed compatible under SemVer; regressions will be patched as needed. Prereleases are excluded by the version requirements. The disposable-HOME report smoke previously passed on `18.10.4`, `18.11.1`, and `18.11.3`; not every supported release has been individually verified.
+Future OMP 18.x releases are assumed compatible under SemVer; regressions will be patched as needed. Prereleases are excluded by the version requirements. The disposable-HOME report smoke previously passed on `18.10.4`, `18.11.1`, `18.11.3`, and `18.16.0`; not every supported release has been individually verified.
 
-This companion depends on the native report/reply host work in [#4783](https://github.com/agent-of-empires/agent-of-empires/pull/4783) and the generic launch contract in [#4782](https://github.com/agent-of-empires/agent-of-empires/pull/4782). AoE main currently uses API 19 without `agent_integrations`. Do not install or merge this manifest until the changes from both host pull requests have landed; launch/discovery alone does not provide report/reply transport. This is a cross-repository dependency, not a GitHub stacked-PR base.
+Installation requires an AoE build containing both the generic launch/discovery contract from [#4782](https://github.com/agent-of-empires/agent-of-empires/pull/4782) and the native report/reply transport from [#4783](https://github.com/agent-of-empires/agent-of-empires/pull/4783). Both are merged into AoE main as of 2026-11-04; use merge commit `b1e7d28b` or a descendant containing both changes. API 19 alone is not sufficient.
 
-The manifest declares the generic launch contract: `tool = "omp"`, `command = "omp"`, and `resume_arg = "--resume {session_id}"`. The host's stored resume argument remains authoritative; the provider session ID in reports is correlation only.
+The manifest declares `tool = "omp"`, `command = "omp"`, bounded `provider_versions`, and `replies = true`. Resume remains native in AoE; the host's stored resume argument remains authoritative, and the provider session ID in reports is correlation only. Saved-session identity and resume must keep working before native OMP capture is removed ([#4571](https://github.com/agent-of-empires/agent-of-empires/issues/4571)).
 
 Install each artifact with its own plugin manager. Existing OMP sessions do not load newly installed extensions; restart the OMP process or start a new OMP session.
 
@@ -22,6 +22,8 @@ Install each artifact with its own plugin manager. Existing OMP sessions do not 
 The OMP extension observes OMP's native approval and question UI and publishes schema-1 provider status and prompt snapshots, including the runtime version, provider session correlation ID, live writer PID, monotonically changing revision, and native reply key strings (`F12`). The manifest opts into replies because this adapter has a real interactive bridge; status-only integrations need no fake reply keys. In AoE's session list, select the matching OMP session and press `a` to open the approval or question dialog. AoE validates each reply against the current prompt, then writes it to a private integration sidecar and delivers it through the existing terminal transport. The OMP extension maps approval/cancel replies to OMP's configured keybindings and submits question answers through OMP's native dialog. Native completion or cancellation rejects later sidebar answers.
 
 OMP remains the approval authority. The extension does not intercept tool execution or approve calls for AoE; there is no AoE approval broker, per-tool gate, or `--auto-approve`. If extension observation or reply delivery fails, OMP's native prompt remains available.
+
+Automatic continuations and pending background work remain running; an open native approval or question takes precedence as waiting. AoE must also validate that the report writer belongs to the managed pane: the extension alone cannot prevent an unrelated live process with an inherited instance ID from overwriting the shared report.
 
 The AoE manifest grant authorizes AoE's integration report and reply path; it does not authorize OMP's in-process extension code. The two artifacts are separate trust and runtime targets.
 
@@ -38,6 +40,10 @@ OMP_BIN=omp ./tests/omp-native-smoke.sh
 ```
 
 Set `OMP_BIN` to the command or path of an installed supported OMP release when the default `omp` executable differs.
+
+### OMP release updates
+
+`.github/workflows/omp-updates.yml` checks the latest stable [OMP release](https://github.com/can1357/oh-my-pi/releases) daily or on manual dispatch. For supported versions, it verifies the published Linux binary checksum and runs the full Bun suite and native startup smoke. An out-of-range release requires manual compatibility review; the smoke does not exercise interactive replies.
 
 This is a focused OMP example, not a general provider-extension bridge or a marketplace bundle. Coordinated installation, upgrades, and release packaging are out of scope.
 

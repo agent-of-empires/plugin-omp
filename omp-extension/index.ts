@@ -214,6 +214,7 @@ export default function (pi: ExtensionAPI): void {
   let revision = 0;
   let prompt: Prompt | null = null;
   let status: Snapshot["status"] = "running";
+  let activity: "running" | "idle" = "running";
   let heartbeat: ReturnType<typeof setInterval> | undefined;
   let unlisten: (() => void) | undefined;
   let currentAsk: AskState | undefined;
@@ -251,6 +252,12 @@ export default function (pi: ExtensionAPI): void {
     prompt = nextPrompt; status = nextStatus;
     void writeSnapshot();
   };
+  const publishActivity = (): void => {
+    const nextPrompt = currentAsk ? questionPrompt(currentAsk.id, currentAsk.questions)
+      : activeApproval?.replyable ? { kind: "approval" as const, id: activeApproval.id, title: activeApproval.title, allow_always: false }
+      : null;
+    publish(nextPrompt, currentAsk || activeApproval ? "waiting" : activity);
+  };
 
   const handleReply = (reply: Reply): boolean => {
     if (handledPromptId === reply.prompt_id) return false;
@@ -287,12 +294,11 @@ export default function (pi: ExtensionAPI): void {
       providerVersion = VERSION;
     } catch { return; }
     try {
-      const [{ appApproveKeys }, { getKeybindings }] = await Promise.all([
-        import("@oh-my-pi/pi-tui/keybinding-matchers"),
-        import("@oh-my-pi/pi-tui/keybindings"),
-      ]);
-      approvalBindings = [...appApproveKeys()];
-      cancelBindings = [...getKeybindings().getKeys("tui.select.cancel")];
+      // omp injects its SDK through pi, and that keymap is what the native
+      // approval prompt renders, so the reply uses omp's own keys.
+      const keymap = pi.pi.KeybindingsManager.create();
+      approvalBindings = [...keymap.getKeys("app.approval.approve")];
+      cancelBindings = [...keymap.getKeys("tui.select.cancel")];
     } catch { /* Native approval remains available when key observation fails. */ }
     const ui = ctx.ui;
     if (ui.askDialog) {
@@ -300,12 +306,11 @@ export default function (pi: ExtensionAPI): void {
       ui.askDialog = observeAskDialog(nativeAsk, {
         open(id, questions, accept) {
           currentAsk = { id, questions, accept };
-          publish(questionPrompt(id, questions), "waiting");
+          publishActivity();
         },
         close(id) {
           if (currentAsk?.id === id) currentAsk = undefined;
-          publish(activeApproval?.replyable ? { kind: "approval", id: activeApproval.id, title: activeApproval.title, allow_always: false } : null,
-            activeApproval ? "waiting" : "running");
+          publishActivity();
         },
       });
     }
@@ -318,10 +323,10 @@ export default function (pi: ExtensionAPI): void {
         activeApproval = { id: approvalId, title, replyable: !!paired };
         return observeApproval(
           () => nativeApprove(approval, options),
-          () => publish(paired ? { kind: "approval", id: approvalId, title, allow_always: false } : null, "waiting"),
+          () => publishActivity(),
           () => {
             if (activeApproval?.id === approvalId) activeApproval = undefined;
-            publish(currentAsk ? questionPrompt(currentAsk.id, currentAsk.questions) : null, currentAsk ? "waiting" : "running");
+            publishActivity();
           },
         );
       };
@@ -346,8 +351,8 @@ export default function (pi: ExtensionAPI): void {
   pi.on("tool_approval_resolved", event => {
     if (event.sessionId === sessionId) approvalQueue = approvalQueue.filter(item => item.id !== event.toolCallId);
   });
-  pi.on("agent_start", () => publish(prompt, "running"));
-  pi.on("agent_end", () => { if (prompt === null) publish(null, "idle"); });
+  pi.on("agent_start", () => { activity = "running"; publishActivity(); });
+  pi.on("agent_end", event => { activity = event.willContinue ? "running" : "idle"; publishActivity(); });
   pi.on("session_shutdown", async () => {
     clearInterval(heartbeat);
     unlisten?.();
