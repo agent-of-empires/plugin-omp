@@ -20,7 +20,7 @@ mod tests {
             result => panic!("expected only the staged unsupported API version: {result:?}"),
         }
         assert_eq!(manifest.api_version, 21);
-        assert_eq!(manifest.version, "0.4.3");
+        assert_eq!(manifest.version, "0.5.0");
         let mut api20 = manifest.clone();
         api20.api_version = 20;
         match api20.validate() {
