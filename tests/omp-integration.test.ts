@@ -187,7 +187,7 @@ test("extension registers no hooks outside an AoE instance", () => {
 test("does not publish when the loaded OMP version is unavailable despite a supported PATH version", () => {
   const instanceId = `version-missing-${process.pid}-${randomUUID()}`;
   const scratch = mkdtempSync(path.join(tmpdir(), "omp-version-missing-"));
-  const reportPath = path.join(integrationDirectory(process.getuid(), instanceId), "integration-omp.agent-of-empires.json");
+  const reportPath = path.join(integrationDirectory(process.getuid(), instanceId), "integration-agent-of-empires.omp.json");
   const extensionPath = path.resolve(import.meta.dir, "../omp-extension/index.ts");
   const script = `
 import { mock } from "bun:test";
@@ -205,7 +205,7 @@ await handlers.get("session_start")?.({}, {
 });
 handlers.get("agent_start")?.();
 await new Promise(resolve => setTimeout(resolve, 10));
-const reportPath = path.join(integrationDirectory(process.getuid(), instanceId), "integration-omp.agent-of-empires.json");
+const reportPath = path.join(integrationDirectory(process.getuid(), instanceId), "integration-agent-of-empires.omp.json");
 const published = existsSync(reportPath);
 await Promise.resolve(handlers.get("session_shutdown")?.());
 if (published) process.exit(1);

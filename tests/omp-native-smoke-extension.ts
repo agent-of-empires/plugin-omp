@@ -14,7 +14,7 @@ export default function (pi: ExtensionAPI): void {
     const expectedVersion = process.env.OMP_EXPECTED_VERSION;
     try {
       if (!marker || !instanceId || !expectedVersion || typeof process.getuid !== "function") throw new Error("missing smoke identity or expected version");
-      const reportPath = `/tmp/aoe-hooks-${process.getuid()}/${instanceId}/integration-omp.agent-of-empires.json`;
+      const reportPath = `/tmp/aoe-hooks-${process.getuid()}/${instanceId}/integration-agent-of-empires.omp.json`;
       for (let attempt = 0; attempt < 40; attempt++) {
         try {
           const report = JSON.parse(readFileSync(reportPath, "utf8")) as {

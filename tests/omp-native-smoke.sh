@@ -24,7 +24,7 @@ mkdir -p "$tmp_home/tmp" "$tmp_home/fake-bin"
 ln -s /bin/echo "$tmp_home/fake-bin/omp"
 
 cleanup() {
-  rm -f "$hook_dir/integration-omp.agent-of-empires.json" "$hook_dir/integration-omp.agent-of-empires.reply.json"
+  rm -f "$hook_dir/integration-agent-of-empires.omp.json" "$hook_dir/integration-agent-of-empires.omp.reply.json"
   rmdir "$hook_dir" 2>/dev/null || true
   rmdir "$hook_root" 2>/dev/null || true
   rm -rf "$tmp_home"

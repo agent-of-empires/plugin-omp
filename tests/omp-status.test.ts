@@ -18,7 +18,7 @@ async function withReporter(run: (reporter: {
 }) => Promise<void>): Promise<void> {
   const previousInstance = process.env.AOE_INSTANCE_ID;
   const instance = `status-${process.pid}-${randomUUID()}`;
-  const file = path.join(integrationDirectory(process.getuid(), instance), "integration-omp.agent-of-empires.json");
+  const file = path.join(integrationDirectory(process.getuid(), instance), "integration-agent-of-empires.omp.json");
   const handlers = new Map<string, (...args: unknown[]) => unknown>();
   const asks: PromiseWithResolvers<undefined>[] = [];
   const approvals: PromiseWithResolvers<boolean>[] = [];

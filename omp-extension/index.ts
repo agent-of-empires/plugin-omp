@@ -21,8 +21,8 @@ type Reply = {
 type AskState = { id: string; questions: ExtensionAskDialogQuestion[]; accept: (result: ExtensionAskDialogResult) => boolean };
 type ApprovalState = { id: string; title: string; replyable: boolean };
 
-const SNAPSHOT_NAME = "integration-omp.agent-of-empires.json";
-const REPLY_NAME = "integration-omp.agent-of-empires.reply.json";
+const SNAPSHOT_NAME = "integration-agent-of-empires.omp.json";
+const REPLY_NAME = "integration-agent-of-empires.omp.reply.json";
 const HEARTBEAT_MS = 5_000;
 const MAX_REPLY_BYTES = 1_048_576;
 const REPLY_KEY = "F12";
@@ -234,7 +234,7 @@ export default function (pi: ExtensionAPI): void {
       let temporary: string | undefined;
       try {
         if (!(await ensurePrivateDirectories(root, dir, uid))) return;
-        temporary = path.join(dir, `.integration-omp.${process.pid}.${randomUUID()}.tmp`);
+        temporary = path.join(dir, `.integration-agent-of-empires.omp.${process.pid}.${randomUUID()}.tmp`);
         const file = await open(temporary, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
         try { await file.writeFile(JSON.stringify(currentSnapshot()), "utf8"); await file.sync(); } finally { await file.close(); }
         await rename(temporary, snapshotPath);

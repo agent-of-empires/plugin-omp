@@ -10,7 +10,7 @@ test("native lifecycle events publish running and idle schema-1 snapshots", asyn
   const previousInstanceId = process.env.AOE_INSTANCE_ID;
   const previousPane = process.env.TMUX_PANE;
   const instanceId = `native-status-${process.pid}-${randomUUID()}`;
-  const reportPath = path.join(integrationDirectory(process.getuid(), instanceId), "integration-omp.agent-of-empires.json");
+  const reportPath = path.join(integrationDirectory(process.getuid(), instanceId), "integration-agent-of-empires.omp.json");
   const handlers = new Map<string, (...args: unknown[]) => unknown>();
   const pi = {
     on(event: string, handler: unknown) {

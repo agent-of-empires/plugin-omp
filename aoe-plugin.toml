@@ -1,4 +1,4 @@
-id = "omp.agent-of-empires"
+id = "agent-of-empires.omp"
 name = "Oh My Pi Integration"
 version = "0.4.2"
 api_version = 20
