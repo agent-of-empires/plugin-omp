@@ -8,6 +8,7 @@ mod tests {
         ManifestError, PluginManifest,
     };
 
+    /// The staged host validates declarations but does not yet accept API 21.
     #[test]
     fn manifest_matches_omp_agent_contract() {
         let manifest: PluginManifest = toml::from_str(include_str!("../../../aoe-plugin.toml"))
