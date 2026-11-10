@@ -11,7 +11,7 @@ This repository contains two independently installed artifacts:
 
 Future OMP 18.x releases are assumed compatible under SemVer; regressions will be patched as needed. Prereleases are excluded by the version requirements. The disposable-HOME report smoke previously passed on `18.10.4`, `18.11.1`, `18.11.3`, and `18.16.0`; not every supported release has been individually verified.
 
-This companion depends on the native report/reply and API 20 agent extraction in [AoE #5380](https://github.com/agent-of-empires/agent-of-empires/pull/5380). Install it on an AoE host that includes that contract; this is a cross-repository dependency, not a GitHub stacked-PR base.
+This manifest requires a future AoE host that supports API 21 and implements the agent declarations. The schema work in [AoE #5529](https://github.com/agent-of-empires/agent-of-empires/pull/5529) alone does not implement the consumer; that work is in progress as part of the [#5380](https://github.com/agent-of-empires/agent-of-empires/pull/5380) split. Current hosts cannot load this manifest. Release and upgrade to a host with both API 21 support and the declaration consumer first; only then release and install this plugin. This is a cross-repository dependency, not a GitHub stacked-PR base.
 
 The manifest declares OMP's command, launch flags, sandbox environment, resume and capture behavior, and native-only status detection. The provider session ID in reports is correlation only.
 
@@ -33,7 +33,7 @@ The AoE manifest grant authorizes AoE's integration report and reply path; it do
 cd omp-extension && bun test ../tests
 ```
 
-Validate the manifest against the pinned AoE API 20 schema with `cargo test --locked --manifest-path tests/manifest/Cargo.toml`.
+Validate the manifest against the pinned staged AoE API 21 schema with `cargo test --locked --manifest-path tests/manifest/Cargo.toml`. The staged schema deliberately rejects API 21 as unsupported by the current host; the test checks that this is the only validation error.
 
 The runtime smoke uses an isolated disposable `HOME`, exercises OMP extension loading and report publication without submitting a prompt to a model, and does not modify the user's OMP configuration:
 

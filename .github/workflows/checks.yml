@@ -21,7 +21,7 @@ jobs:
               tomllib.load(f)
           print("aoe-plugin.toml parses as TOML")
           PY
-      - name: Validate against AoE API 20
+      - name: Validate against staged AoE API 21 schema
         run: cargo test --locked --manifest-path tests/manifest/Cargo.toml
 
   omp-extension:

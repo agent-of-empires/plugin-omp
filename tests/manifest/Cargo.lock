@@ -5,7 +5,7 @@ version = 4
 [[package]]
 name = "aoe-plugin-api"
 version = "0.1.0"
-source = "git+https://github.com/agent-of-empires/agent-of-empires.git?rev=08cdd0179a16a275087d5590932e07f76198cf11#08cdd0179a16a275087d5590932e07f76198cf11"
+source = "git+https://github.com/agent-of-empires/agent-of-empires.git?rev=dfc3acefca9b5d337435fb015cff43bde7071739#dfc3acefca9b5d337435fb015cff43bde7071739"
 dependencies = [
  "semver",
  "serde",
@@ -120,6 +120,7 @@ name = "plugin-omp-manifest-test"
 version = "0.0.0"
 dependencies = [
  "aoe-plugin-api",
+ "toml",
 ]
 
 [[package]]
