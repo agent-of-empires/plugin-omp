@@ -5,5 +5,5 @@ edition = "2021"
 publish = false
 
 [dependencies]
-aoe-plugin-api = { git = "https://github.com/agent-of-empires/agent-of-empires.git", rev = "dfc3acefca9b5d337435fb015cff43bde7071739" }
+aoe-plugin-api = { git = "https://github.com/agent-of-empires/agent-of-empires.git", rev = "72304873c7f4c7470c102509a07a1346b0b2c805" }
 toml = "1.1"
