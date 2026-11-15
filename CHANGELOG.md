@@ -9,6 +9,7 @@ The format follows [Conventional Commits](https://www.conventionalcommits.org/).
 ### Changed
 - **Breaking:** Require AoE `1.24.0` or newer for launch and detection declarations. Older hosts reject the manifest and keep the bundled OMP fallback.
 - **Breaking:** Rename the plugin id from `omp.agent-of-empires` to `agent-of-empires.omp`, which changes the report sidecar names and does not upgrade an existing 0.4.x install. Uninstall the old id before installing 0.5.0.
+- Match the OMP extension package version to the release so the 0.4.x and 0.5.0 extensions, which write different report sidecar names, no longer share one version string.
 - Accept stable OMP releases from 18.10.4 through major version 18 in both the manifest and extension peer requirements, and update the native smoke's version check.
 - Declare core's OMP launch, resume, capture, YOLO, sandbox environment, and native status detection through AoE agent declarations.
 - Declare bounded provider versions, the OMP launch command, and explicit native reply capability.
