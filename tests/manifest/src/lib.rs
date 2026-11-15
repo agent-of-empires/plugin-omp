@@ -5,14 +5,32 @@ mod tests {
             AgentCaptureBackend, AgentCaptureContext, AgentDetectionMode, AgentResumeDeclaration,
             AgentYoloDeclaration,
         },
-        PluginManifest,
+        ManifestError, PluginManifest,
     };
 
+    /// The staged host validates declarations but does not yet accept API 21.
     #[test]
     fn manifest_matches_omp_agent_contract() {
-        let manifest = PluginManifest::from_toml_str(include_str!("../../../aoe-plugin.toml"))
-            .expect("plugin manifest must parse and validate against AoE API 20");
-        assert_eq!(manifest.api_version, 20);
+        let manifest: PluginManifest = toml::from_str(include_str!("../../../aoe-plugin.toml"))
+            .expect("plugin manifest must parse against the staged AoE schema");
+        match manifest.validate() {
+            Err(ManifestError::Invalid(errors)) => {
+                assert_eq!(errors.len(), 1, "{errors:?}");
+                assert!(errors[0].contains("api_version"), "{errors:?}");
+            }
+            result => panic!("expected only the staged unsupported API version: {result:?}"),
+        }
+        assert_eq!(manifest.api_version, 21);
+        assert_eq!(manifest.version, "0.5.0");
+        let mut api20 = manifest.clone();
+        api20.api_version = 20;
+        match api20.validate() {
+            Err(ManifestError::Invalid(errors)) => assert!(
+                errors.iter().any(|error| error.contains("declarations require api_version >= 21")),
+                "{errors:?}"
+            ),
+            result => panic!("expected API 20 declarations to be rejected: {result:?}"),
+        }
         assert!(manifest
             .capabilities
             .iter()
