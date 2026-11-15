@@ -6,7 +6,7 @@ Provider-native OMP session status and explicit approval/question replies in AoE
 
 This repository contains two independently installed artifacts:
 
-- `aoe-plugin.toml` is the AoE plugin manifest. Install it from the repository root with `aoe plugin install .` and approve its `session.integration` capability through AoE's normal install flow.
+- `aoe-plugin.toml` is the AoE plugin manifest. From a checkout, install it with `aoe plugin install --dev .` and approve its `session.integration` capability through AoE's normal install flow. The id sits in the reserved `agent-of-empires.*` namespace, so a plain `aoe plugin install` or `gh:` install is refused until core's featured index pins a release of this repository.
 - `omp-extension/` is the provider-native OMP extension. Install it separately with `omp plugin install "$PWD/omp-extension"`. Both artifacts support stable OMP releases from `18.10.4` up to, but excluding, `19.0.0`; `18.10.3` lacks the approval-key API required by the native reply bridge.
 
 Future OMP 18.x releases are assumed compatible under SemVer; regressions will be patched as needed. Prereleases are excluded by the version requirements. The disposable-HOME report smoke previously passed on `18.10.4`, `18.11.1`, `18.11.3`, and `18.16.0`; not every supported release has been individually verified.

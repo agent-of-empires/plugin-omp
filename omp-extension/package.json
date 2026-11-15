@@ -1,6 +1,6 @@
 {
   "name": "@agent-of-empires/omp-integration",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "type": "module",
   "description": "Provider-native OMP status and native prompt integration for Agent of Empires.",
   "peerDependencies": {
