@@ -7,7 +7,7 @@ The format follows [Conventional Commits](https://www.conventionalcommits.org/).
 ## [Unreleased]
 
 ### Changed
-- **Breaking:** Require AoE API 21 for launch and detection declarations. A host implementing API 21 and the declaration consumer must be released before this plugin can be installed.
+- **Breaking:** Require AoE `1.24.0` or newer for launch and detection declarations. Older hosts reject the manifest and keep the bundled OMP fallback.
 - Accept stable OMP releases from 18.10.4 through major version 18 in both the manifest and extension peer requirements, and update the native smoke's version check.
 - Declare core's OMP launch, resume, capture, YOLO, sandbox environment, and native status detection through AoE agent declarations.
 - Declare bounded provider versions, the OMP launch command, and explicit native reply capability.
@@ -17,6 +17,7 @@ The format follows [Conventional Commits](https://www.conventionalcommits.org/).
 - Check supported stable OMP releases with compatibility tests and the native startup smoke; flag out-of-range releases for manual review.
 
 ### Fixed
+- Validate the manifest against AoE `1.24.0`, the first released host that accepts API 21, instead of a staged schema that rejects it, and replace the README's stale "current hosts cannot load this manifest" note with the `1.24.0` requirement.
 - Replace unsupported `resume_arg` metadata with the agent resume declaration.
 - Replace the stale host-merge warning with the actual launch/discovery and report/reply installation requirements.
 - Keep automatic continuations running and preserve waiting while a native question or approval is open.

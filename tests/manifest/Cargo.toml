@@ -5,5 +5,6 @@ edition = "2021"
 publish = false
 
 [dependencies]
-aoe-plugin-api = { git = "https://github.com/agent-of-empires/agent-of-empires.git", rev = "72304873c7f4c7470c102509a07a1346b0b2c805" }
+# v1.24.0, the first released host with API_VERSION = 21 and the declaration consumer.
+aoe-plugin-api = { git = "https://github.com/agent-of-empires/agent-of-empires.git", rev = "83c551eedbfeb24924215d4afc3935c18bf4ac05" }
 toml = "1.1"

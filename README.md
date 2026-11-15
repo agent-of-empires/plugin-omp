@@ -11,7 +11,7 @@ This repository contains two independently installed artifacts:
 
 Future OMP 18.x releases are assumed compatible under SemVer; regressions will be patched as needed. Prereleases are excluded by the version requirements. The disposable-HOME report smoke previously passed on `18.10.4`, `18.11.1`, `18.11.3`, and `18.16.0`; not every supported release has been individually verified.
 
-This manifest requires a future AoE host that supports API 21 and implements the agent declarations. The schema work in [AoE #5529](https://github.com/agent-of-empires/agent-of-empires/pull/5529) alone does not implement the consumer; that work is in progress as part of the [#5380](https://github.com/agent-of-empires/agent-of-empires/pull/5380) split. Current hosts cannot load this manifest. Release and upgrade to a host with both API 21 support and the declaration consumer first; only then release and install this plugin. This is a cross-repository dependency, not a GitHub stacked-PR base.
+This manifest requires AoE `1.24.0` or newer: it declares `api_version = 21`, and `1.24.0` is the first host that accepts API 21 and consumes the agent declarations (`src/plugin/agent_integration.rs` in the core repo). Hosts that predate it reject the manifest with an unsupported-API-version error and keep the bundled OMP fallback, so a host still on `1.23.x` or earlier cannot load this plugin. An approved, enabled declaration supersedes that fallback for `omp`, which is what makes the released plugin authoritative.
 
 The manifest declares OMP's command, launch flags, sandbox environment, resume and capture behavior, and native-only status detection. The provider session ID in reports is correlation only.
 
@@ -33,7 +33,7 @@ The AoE manifest grant authorizes AoE's integration report and reply path; it do
 cd omp-extension && bun test ../tests
 ```
 
-Validate the manifest against the pinned staged AoE API 21 schema with `cargo test --locked --manifest-path tests/manifest/Cargo.toml`. The staged schema deliberately rejects API 21 as unsupported by the current host; the test checks that this is the only validation error.
+Validate the manifest against the pinned AoE API 21 schema with `cargo test --locked --manifest-path tests/manifest/Cargo.toml`. The pin is AoE `v1.24.0`, the first release whose host accepts API 21, so the test asserts the shipped manifest validates cleanly and that the same declarations are rejected at `api_version = 20`.
 
 The runtime smoke uses an isolated disposable `HOME`, exercises OMP extension loading and report publication without submitting a prompt to a model, and does not modify the user's OMP configuration:
 
