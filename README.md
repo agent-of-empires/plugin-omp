@@ -17,6 +17,13 @@ The manifest declares OMP's command, launch flags, sandbox environment, resume a
 
 Install each artifact with its own plugin manager. Existing OMP sessions do not load newly installed extensions; restart the OMP process or start a new OMP session.
 
+## Merge gate
+
+`main` is gated by two rulesets. `Main` holds the required status checks, CodeQL and the deletion and
+force-push blocks, with no bypass actor. `Main review` holds the one-approval rule alone, with the
+Castellan App as a pull-request-mode bypass actor, so Castellan can satisfy the review rule but can
+never skip a required check.
+
 ## Behavior
 
 The OMP extension observes OMP's native approval and question UI and publishes schema-1 provider status and prompt snapshots, including the runtime version, provider session correlation ID, live writer PID, monotonically changing revision, and native reply key strings (`F12`). The manifest opts into replies because this adapter has a real interactive bridge; status-only integrations need no fake reply keys. In AoE's session list, select the matching OMP session and press `a` to open the approval or question dialog. AoE validates each reply against the current prompt, then writes it to a private integration sidecar and delivers it through the existing terminal transport. The OMP extension maps approval/cancel replies to OMP's configured keybindings and submits question answers through OMP's native dialog. Native completion or cancellation rejects later sidebar answers.
