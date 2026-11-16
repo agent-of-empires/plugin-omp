@@ -33,6 +33,8 @@ The AoE manifest grant authorizes AoE's integration report and reply path; it do
 cd omp-extension && bun test ../tests
 ```
 
+Run the extension suite from `omp-extension/` as shown; it covers the status, lifecycle and integration paths.
+
 Validate the manifest against the pinned AoE API 21 schema with `cargo test --locked --manifest-path tests/manifest/Cargo.toml`. The pin is AoE `v1.24.0`, the first release whose host accepts API 21, so the test asserts the shipped manifest validates cleanly and that the same declarations are rejected at `api_version = 20`.
 
 The runtime smoke uses an isolated disposable `HOME`, exercises OMP extension loading and report publication without submitting a prompt to a model, and does not modify the user's OMP configuration:
