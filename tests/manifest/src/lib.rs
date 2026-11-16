@@ -8,17 +8,13 @@ mod tests {
         ManifestError, PluginManifest,
     };
 
-    /// The staged host validates declarations but does not yet accept API 21.
+    /// The pinned host accepts API 21, so the shipped manifest must validate cleanly there.
     #[test]
     fn manifest_matches_omp_agent_contract() {
         let manifest: PluginManifest = toml::from_str(include_str!("../../../aoe-plugin.toml"))
-            .expect("plugin manifest must parse against the staged AoE schema");
-        match manifest.validate() {
-            Err(ManifestError::Invalid(errors)) => {
-                assert_eq!(errors.len(), 1, "{errors:?}");
-                assert!(errors[0].contains("api_version"), "{errors:?}");
-            }
-            result => panic!("expected only the staged unsupported API version: {result:?}"),
+            .expect("plugin manifest must parse against the pinned AoE schema");
+        if let Err(error) = manifest.validate() {
+            panic!("the manifest must validate against the released API 21 host: {error:?}");
         }
         assert_eq!(manifest.api_version, 21);
         assert_eq!(manifest.version, "0.5.0");
