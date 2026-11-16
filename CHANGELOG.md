@@ -4,7 +4,7 @@ All notable changes to OMP Integration will be documented in this file.
 
 The format follows [Conventional Commits](https://www.conventionalcommits.org/).
 
-## [Unreleased]
+## [0.5.0] - 2026-11-16
 
 ### Changed
 - **Breaking:** Require AoE `1.24.0` or newer for launch and detection declarations. Older hosts reject the manifest and keep the bundled OMP fallback.
