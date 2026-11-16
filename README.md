@@ -19,10 +19,11 @@ Install each artifact with its own plugin manager. Existing OMP sessions do not 
 
 ## Merge gate
 
-`main` is gated by two rulesets. `Main` holds the required status checks, CodeQL and the deletion and
-force-push blocks, with no bypass actor. `Main review` holds the one-approval rule alone, with the
-Castellan App as a pull-request-mode bypass actor, so Castellan can satisfy the review rule but can
-never skip a required check.
+`main` is gated by two rulesets. `Main` holds the required status checks (`OMP extension tests`,
+`Validate manifest`), CodeQL, and the deletion and force-push blocks, with no bypass actor. `Main
+review` holds the review rule alone: one approving review from the `maintainers` team, with the
+Castellan App as a pull-request-mode bypass actor. The App can satisfy the review rule and cannot
+skip a required check.
 
 ## Behavior
 
