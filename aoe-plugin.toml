@@ -7,7 +7,7 @@ capabilities = ["session.integration"]
 
 [[agent_integrations]]
 tool = "omp"
-provider_versions = [">=18.10.4, <19.0.0"]
+provider_versions = [">=18.10.4, <20.0.0"]
 command = "omp"
 replies = true
 

@@ -4,6 +4,11 @@ All notable changes to OMP Integration will be documented in this file.
 
 The format follows [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [Unreleased]
+
+### Changed
+- Accept stable OMP 19.x releases by widening the manifest provider range and the extension peer requirement to `>=18.10.4, <20.0.0`, and update the native smoke's version check. OMP `19.0.1` keeps every extension API this adapter uses, so no code change was needed.
+
 ## [0.5.0] - 2026-11-16
 
 ### Changed

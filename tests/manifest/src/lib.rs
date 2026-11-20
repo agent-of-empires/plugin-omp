@@ -37,10 +37,21 @@ mod tests {
         assert_eq!(integration.tool, "omp");
         assert_eq!(integration.command.as_deref(), Some("omp"));
         assert!(integration.replies);
-        for version in ["18.10.4", "18.11.1", "18.11.2", "18.11.3", "18.16.0", "18.17.0", "18.99.99"] {
+        for version in [
+            "18.10.4",
+            "18.11.1",
+            "18.11.2",
+            "18.11.3",
+            "18.16.0",
+            "18.17.0",
+            "18.99.99",
+            "19.0.0",
+            "19.0.1",
+            "19.99.99",
+        ] {
             assert!(integration.provider_compat(version).is_ok(), "{version}");
         }
-        for version in ["18.10.3", "19.0.0", "18.17.0-rc.1", "invalid"] {
+        for version in ["18.10.3", "20.0.0", "19.0.1-rc.1", "18.17.0-rc.1", "invalid"] {
             assert!(integration.provider_compat(version).is_err(), "{version}");
         }
         let launch = integration.launch.as_ref().expect("launch");
