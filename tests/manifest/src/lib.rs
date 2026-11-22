@@ -17,7 +17,7 @@ mod tests {
             panic!("the manifest must validate against the released API 21 host: {error:?}");
         }
         assert_eq!(manifest.api_version, 21);
-        assert_eq!(manifest.version, "0.5.0");
+        assert_eq!(manifest.version, "0.6.0");
         let mut api20 = manifest.clone();
         api20.api_version = 20;
         match api20.validate() {
