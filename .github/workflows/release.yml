@@ -11,6 +11,11 @@ name: Release
 # `published` workflow, and calling a reusable workflow is not an event, so no
 # PAT is involved. `workflow_dispatch` publishes a version cut by hand before
 # release-please was adopted, creating the release when there is none yet.
+#
+# A dispatch may name a tag that does not exist yet, which is how the bootstrap
+# release is cut: checkout cannot resolve a missing ref, so the job resolves the
+# tag when it is there and otherwise releases the dispatched commit, letting
+# `gh release create --target` put the tag on that same commit.
 
 on:
   workflow_call:
@@ -38,9 +43,22 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Resolve the ref to release
+        id: ref
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
+            echo "ref=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+            echo "::notice::${RELEASE_TAG} does not exist yet; releasing ${GITHUB_SHA} and tagging it there."
+          fi
+
       - uses: actions/checkout@v4
         with:
-          ref: ${{ env.RELEASE_TAG }}
+          ref: ${{ steps.ref.outputs.ref }}
           persist-credentials: false
 
       - uses: oven-sh/setup-bun@v2
@@ -100,7 +118,10 @@ jobs:
             gh release upload "${RELEASE_TAG}" \
               "${NAME}.tar.gz" "${NAME}.tar.gz.sha256" --clobber
           else
+            # The tag does not exist, so this creates it on the commit that was
+            # checked out and validated rather than wherever main points later.
             gh release create "${RELEASE_TAG}" \
+              --target "$(git rev-parse HEAD)" \
               --title "${RELEASE_TAG}" \
               --notes-file release-notes.md \
               "${NAME}.tar.gz" "${NAME}.tar.gz.sha256"

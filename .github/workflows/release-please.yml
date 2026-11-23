@@ -13,6 +13,11 @@ name: Release Please
 # workflow inside this run instead -- the same token may do the work directly,
 # it just cannot trigger a new run. Without any release (a push to main that
 # only refreshed the PR) the publish job is skipped.
+#
+# The manifest names the last published version, so its tag has to exist before
+# a run: release-please would otherwise scan from before it and read the missing
+# tag as history to release. The bootstrap 0.6.0 is the one version that breaks
+# this, and the check below waits for its tag instead of guessing.
 
 on:
   push:
@@ -38,7 +43,25 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
+      - name: Check the manifest's last release is tagged
+        id: boundary
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="$(gh api \
+            "repos/${GITHUB_REPOSITORY}/contents/.release-please-manifest.json" \
+            -H 'Accept: application/vnd.github.raw' \
+            | python3 -c 'import json, sys; print(json.load(sys.stdin)["."])')"
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/v${VERSION}" >/dev/null 2>&1; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::v${VERSION} is the manifest's last release but has no tag. Publish it with 'gh workflow run release.yml -f tag=v${VERSION}' and re-run this workflow."
+          fi
+
       - id: release
+        if: steps.boundary.outputs.ready == 'true'
         uses: googleapis/release-please-action@v4
         with:
           target-branch: main
