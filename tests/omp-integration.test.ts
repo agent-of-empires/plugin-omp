@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import ompExtension, { ensurePrivateDirectories, integrationDirectory, nativeApprovalKey, observeApproval, observeAskDialog, validateReply } from "../omp-extension/index.ts";
+import ompExtension, { ensurePrivateDirectories, integrationDirectory, integrationPaths, nativeApprovalKey, observeApproval, observeAskDialog, sessionIdLeaf, validateReply } from "../omp-extension/index.ts";
 import { randomUUID } from "node:crypto";
 import { chmodSync, existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -164,6 +164,31 @@ test("provider creates owner-only directories and uses the shared /tmp hook path
   } finally {
     rmSync(scratch, { recursive: true, force: true });
   }
+});
+
+test("the launch's mounted directory wins over the uid-derived hook path", () => {
+  const uid = process.getuid();
+  expect(integrationPaths({}, uid, "instance-a")).toEqual({
+    root: `/tmp/aoe-hooks-${uid}`,
+    dir: `/tmp/aoe-hooks-${uid}/instance-a`,
+  });
+  expect(integrationPaths({ AOE_INTEGRATION_DIR: "/tmp/aoe-hooks/instance-a" }, uid, "instance-a")).toEqual({
+    root: "/tmp/aoe-hooks",
+    dir: "/tmp/aoe-hooks/instance-a",
+  });
+  expect(integrationPaths({ AOE_INTEGRATION_DIR: "relative/instance-a" }, uid, "instance-a")).toEqual({
+    root: `/tmp/aoe-hooks-${uid}`,
+    dir: `/tmp/aoe-hooks-${uid}/instance-a`,
+  });
+});
+
+test("only a canonical launch id scopes the session id sidecar", () => {
+  const launchId = "7d442dd2-7b10-4cc4-9207-123456789abc";
+  expect(sessionIdLeaf(launchId)).toBe(`session_id.${launchId}`);
+  expect(sessionIdLeaf(undefined)).toBe("session_id");
+  expect(sessionIdLeaf("")).toBe("session_id");
+  expect(sessionIdLeaf("not-a-launch-id")).toBe("session_id");
+  expect(sessionIdLeaf("7D442DD2-7B10-4CC4-9207-123456789ABC")).toBe("session_id");
 });
 
 test("extension registers no hooks outside an AoE instance", () => {

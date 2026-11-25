@@ -1,7 +1,7 @@
 id = "agent-of-empires.omp"
 name = "Oh My Pi Integration"
 version = "0.6.0"
-api_version = 21
+api_version = 25
 description = "OMP-native session status and explicit approval/question replies through AoE's terminal session list. Requires the separately installed OMP runtime plugin."
 capabilities = ["session.integration"]
 
@@ -29,7 +29,7 @@ kind = "flag"
 flag = "--resume"
 
 [agent_integrations.launch.capture]
-backend = "omp"
+backend = "extension_sidecar"
 host = "pane_scoped"
 sandbox = "pane_scoped"
 

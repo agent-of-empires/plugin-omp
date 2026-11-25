@@ -5,6 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-# v1.24.0, the first released host with API_VERSION = 21 and the declaration consumer.
-aoe-plugin-api = { git = "https://github.com/agent-of-empires/agent-of-empires.git", rev = "83c551eedbfeb24924215d4afc3935c18bf4ac05" }
+# The host branch that adds API 25 `extension_sidecar` capture; re-point at the
+# release that ships it before tagging.
+aoe-plugin-api = { git = "https://github.com/agent-of-empires/agent-of-empires.git", rev = "47790baa5232c3c9dde64239d9fe7537106b2b46" }
 toml = "1.1"

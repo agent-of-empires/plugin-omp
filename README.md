@@ -11,9 +11,9 @@ This repository contains two independently installed artifacts:
 
 Future OMP 18.x and 19.x releases are assumed compatible under SemVer; regressions will be patched as needed. Prereleases are excluded by the version requirements. The disposable-HOME report smoke previously passed on `18.10.4`, `18.11.1`, `18.11.3`, and `18.16.0`. The 19.x range extension was checked against `19.0.1`'s published extension typings, where the extension API this adapter uses (the `VERSION` export, `ExtensionAPI.pi`, `ui.askDialog`, `ui.approve`, `ui.onTerminalInput`, the lifecycle/approval events, and the `app.approval.approve` and `tui.select.cancel` keybindings) is unchanged; not every supported release has been individually verified in the smoke.
 
-This manifest requires AoE `1.24.0` or newer: it declares `api_version = 21`, and `1.24.0` is the first host that accepts API 21 and consumes the agent declarations (`src/plugin/agent_integration.rs` in the core repo). Hosts that predate it reject the manifest with an unsupported-API-version error and keep the bundled OMP fallback, so a host still on `1.23.x` or earlier cannot load this plugin. An approved, enabled declaration supersedes that fallback for `omp`, which is what makes the released plugin authoritative.
+This manifest requires an AoE host that accepts `api_version = 25` and reads the `extension_sidecar` capture backend (`src/plugin/agent_integration.rs` in the core repo). Hosts that predate it reject the manifest with an unsupported-API-version or invalid-declaration error and keep the bundled OMP fallback, so an older host cannot load this plugin. An approved, enabled declaration supersedes that fallback for `omp`, which is what makes the released plugin authoritative.
 
-The manifest declares OMP's command, launch flags, sandbox environment, resume and capture behavior, and native-only status detection. The provider session ID in reports is correlation only.
+The manifest declares OMP's command, launch flags, sandbox environment, resume and capture behavior, and native-only status detection. The extension writes the provider session ID into the session's AoE integration directory as `session_id.<launch id>`, taken from the `AOE_SESSION_SOURCE` the launch sets, so an earlier launch's id is never read as this launch's conversation; the same ID in reports is correlation only. A sandboxed launch mounts that directory and names it in `AOE_INTEGRATION_DIR`, so the extension writes where the host reads without deriving a path from a uid it does not have.
 
 Install each artifact with its own plugin manager. Existing OMP sessions do not load newly installed extensions; restart the OMP process or start a new OMP session.
 
@@ -33,7 +33,7 @@ The AoE manifest grant authorizes AoE's integration report and reply path; it do
 cd omp-extension && bun test ../tests
 ```
 
-Validate the manifest against the pinned AoE API 21 schema with `cargo test --locked --manifest-path tests/manifest/Cargo.toml`. The pin is AoE `v1.24.0`, the first release whose host accepts API 21, so the test asserts the shipped manifest validates cleanly and that the same declarations are rejected at `api_version = 20`.
+Validate the manifest against the pinned AoE schema with `cargo test --locked --manifest-path tests/manifest/Cargo.toml`. The test asserts the shipped manifest validates cleanly against the host revision that adds `extension_sidecar`, that API 20 rejects the declarations, and that API 24 rejects the sidecar capture backend. Re-point the pin at the release that ships the backend before tagging.
 
 The runtime smoke uses an isolated disposable `HOME`, exercises OMP extension loading and report publication without submitting a prompt to a model, and does not modify the user's OMP configuration:
 
