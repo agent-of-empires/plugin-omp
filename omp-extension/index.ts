@@ -11,6 +11,9 @@ type Prompt =
   | { kind: "question"; id: string; title: string; questions: Question[] };
 type Snapshot = {
   schema_version: 1; instance_id: string; provider_version: string; provider_session_id: string; writer_pid: number;
+  // The launch that wrote this report. A sandboxed provider's pid is a container
+  // pid, so the host accepts the report only while this names the active launch.
+  launch_id?: string;
   revision: number; status: "running" | "waiting" | "idle" | "error"; reply_keys: string[]; prompt: Prompt | null;
 };
 type Reply = {
@@ -155,11 +158,18 @@ export function integrationPaths(env: NodeJS.ProcessEnv, uid: number, instanceId
   return { root: path.dirname(dir), dir };
 }
 
-/// Mirrors the host's leaf rule. Only a canonical launch id scopes the sidecar,
-/// so an earlier launch's id is never read as this launch's identity.
-export function sessionIdLeaf(source: string | undefined): string {
+/// Only a canonical launch id scopes anything: it names the sidecar leaf, and it
+/// is the launch the host matches a sandboxed report against.
+export function canonicalLaunchId(source: string | undefined): string | undefined {
   const trimmed = source?.trim();
-  return trimmed && CANONICAL_UUID.test(trimmed) ? `${SESSION_ID_NAME}.${trimmed}` : SESSION_ID_NAME;
+  return trimmed && CANONICAL_UUID.test(trimmed) ? trimmed : undefined;
+}
+
+/// Mirrors the host's leaf rule, so an earlier launch's id is never read as this
+/// launch's identity.
+export function sessionIdLeaf(source: string | undefined): string {
+  const launch = canonicalLaunchId(source);
+  return launch ? `${SESSION_ID_NAME}.${launch}` : SESSION_ID_NAME;
 }
 type AskDialog = (questions: ExtensionAskDialogQuestion[], options?: ExtensionUIDialogOptions) => Promise<ExtensionAskDialogResult | undefined>;
 type AskObserver = {
@@ -252,6 +262,7 @@ export default function (pi: ExtensionAPI): void {
   const { root, dir } = integrationPaths(process.env, uid, instanceId);
   const snapshotPath = path.join(dir, SNAPSHOT_NAME);
   const replyPath = path.join(dir, REPLY_NAME);
+  const launchId = canonicalLaunchId(process.env[SESSION_SOURCE_ENV]);
   const sessionIdPath = path.join(dir, sessionIdLeaf(process.env[SESSION_SOURCE_ENV]));
   let sessionId = "";
   let revision = 0;
@@ -269,7 +280,7 @@ export default function (pi: ExtensionAPI): void {
 
   let providerVersion = "";
   const currentSnapshot = (): Snapshot => ({ schema_version: 1, instance_id: instanceId, provider_version: providerVersion, provider_session_id: sessionId,
-    writer_pid: process.pid, revision, status, reply_keys: [REPLY_KEY], prompt });
+    writer_pid: process.pid, launch_id: launchId, revision, status, reply_keys: [REPLY_KEY], prompt });
   let writeQueue = Promise.resolve();
   // `session_id` is this launch's conversation identity, so the host can resume
   // it without parsing OMP's own store. Rewritten with the heartbeat to stay

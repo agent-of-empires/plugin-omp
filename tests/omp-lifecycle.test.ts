@@ -110,6 +110,9 @@ test("a mounted integration directory receives the session id sidecar", async ()
     });
     expect(readFileSync(sessionIdPath, "utf8")).toBe("provider-session");
     expect(readFileSync(snapshotPath, "utf8")).toContain("provider-session");
+    // A sandboxed provider's pid is a container pid, so the report must name the
+    // launch it came from or the host ignores it.
+    expect(JSON.parse(readFileSync(snapshotPath, "utf8"))).toMatchObject({ launch_id: launchId });
     await Promise.resolve(handlers.get("session_shutdown")?.());
     expect(existsSync(sessionIdPath)).toBe(false);
     expect(existsSync(snapshotPath)).toBe(false);

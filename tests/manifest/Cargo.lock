@@ -4,8 +4,8 @@ version = 4
 
 [[package]]
 name = "aoe-plugin-api"
-version = "1.25.0"
-source = "git+https://github.com/agent-of-empires/agent-of-empires.git?rev=47790baa5232c3c9dde64239d9fe7537106b2b46#47790baa5232c3c9dde64239d9fe7537106b2b46"
+version = "1.26.0"
+source = "git+https://github.com/agent-of-empires/agent-of-empires.git?rev=9a56f0c5b696275a0ad849133302fba277b06b99#9a56f0c5b696275a0ad849133302fba277b06b99"
 dependencies = [
  "semver",
  "serde",
