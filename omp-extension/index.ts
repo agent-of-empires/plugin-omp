@@ -11,6 +11,9 @@ type Prompt =
   | { kind: "question"; id: string; title: string; questions: Question[] };
 type Snapshot = {
   schema_version: 1; instance_id: string; provider_version: string; provider_session_id: string; writer_pid: number;
+  // The launch that wrote this report. A sandboxed provider's pid is a container
+  // pid, so the host accepts the report only while this names the active launch.
+  launch_id?: string;
   revision: number; status: "running" | "waiting" | "idle" | "error"; reply_keys: string[]; prompt: Prompt | null;
 };
 type Reply = {
@@ -23,6 +26,13 @@ type ApprovalState = { id: string; title: string; replyable: boolean };
 
 const SNAPSHOT_NAME = "integration-agent-of-empires.omp.json";
 const REPLY_NAME = "integration-agent-of-empires.omp.reply.json";
+// The launch names the directory it mounted for this session, which a sandbox
+// needs: there the provider's uid is the container's, not the host's, so the
+// path cannot be derived here.
+const INTEGRATION_DIR_ENV = "AOE_INTEGRATION_DIR";
+const SESSION_SOURCE_ENV = "AOE_SESSION_SOURCE";
+const SESSION_ID_NAME = "session_id";
+const CANONICAL_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const HEARTBEAT_MS = 5_000;
 const MAX_REPLY_BYTES = 1_048_576;
 const REPLY_KEY = "F12";
@@ -95,6 +105,29 @@ function readReply(file: string, uid: number, current: Snapshot): Reply | undefi
   } catch { return undefined; }
   finally { if (descriptor !== undefined) closeSync(descriptor); }
 }
+async function ownsSessionId(file: string, uid: number, sessionId: string): Promise<boolean> {
+  let descriptor: number | undefined;
+  try {
+    descriptor = openSync(file, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const stat = fstatSync(descriptor);
+    if (!stat.isFile() || stat.uid !== uid || (stat.mode & 0o7777) !== 0o600 || stat.size > 128) return false;
+    return readFileSync(descriptor, "utf8").trim() === sessionId;
+  } catch { return false; }
+  finally { if (descriptor !== undefined) closeSync(descriptor); }
+}
+
+async function writePrivateFile(dir: string, name: string, contents: string): Promise<void> {
+  const temporary = path.join(dir, `.${name}.${process.pid}.${randomUUID()}.tmp`);
+  try {
+    const file = await open(temporary, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
+    try { await file.writeFile(contents, "utf8"); await file.sync(); } finally { await file.close(); }
+    await rename(temporary, path.join(dir, name));
+  } catch (error) {
+    await unlink(temporary).catch(() => undefined);
+    throw error;
+  }
+}
+
 async function ownsSnapshot(file: string, uid: number, instanceId: string, sessionId: string): Promise<boolean> {
   let descriptor: number | undefined;
   try {
@@ -117,6 +150,26 @@ export async function ensurePrivateDirectories(root: string, dir: string, uid: n
 
 export function integrationDirectory(uid: number, instanceId: string): string {
   return path.join("/tmp", `aoe-hooks-${uid}`, instanceId);
+}
+
+export function integrationPaths(env: NodeJS.ProcessEnv, uid: number, instanceId: string): { root: string; dir: string } {
+  const configured = env[INTEGRATION_DIR_ENV]?.trim();
+  const dir = configured && path.isAbsolute(configured) ? configured : integrationDirectory(uid, instanceId);
+  return { root: path.dirname(dir), dir };
+}
+
+/// Only a canonical launch id scopes anything: it names the sidecar leaf, and it
+/// is the launch the host matches a sandboxed report against.
+export function canonicalLaunchId(source: string | undefined): string | undefined {
+  const trimmed = source?.trim();
+  return trimmed && CANONICAL_UUID.test(trimmed) ? trimmed : undefined;
+}
+
+/// Mirrors the host's leaf rule, so an earlier launch's id is never read as this
+/// launch's identity.
+export function sessionIdLeaf(source: string | undefined): string {
+  const launch = canonicalLaunchId(source);
+  return launch ? `${SESSION_ID_NAME}.${launch}` : SESSION_ID_NAME;
 }
 type AskDialog = (questions: ExtensionAskDialogQuestion[], options?: ExtensionUIDialogOptions) => Promise<ExtensionAskDialogResult | undefined>;
 type AskObserver = {
@@ -206,10 +259,11 @@ export default function (pi: ExtensionAPI): void {
   const instanceId = resolveInstanceId();
   if (!instanceId || typeof process.getuid !== "function") return;
   const uid = process.getuid();
-  const root = path.join("/tmp", `aoe-hooks-${uid}`);
-  const dir = integrationDirectory(uid, instanceId);
+  const { root, dir } = integrationPaths(process.env, uid, instanceId);
   const snapshotPath = path.join(dir, SNAPSHOT_NAME);
   const replyPath = path.join(dir, REPLY_NAME);
+  const launchId = canonicalLaunchId(process.env[SESSION_SOURCE_ENV]);
+  const sessionIdPath = path.join(dir, sessionIdLeaf(process.env[SESSION_SOURCE_ENV]));
   let sessionId = "";
   let revision = 0;
   let prompt: Prompt | null = null;
@@ -226,24 +280,20 @@ export default function (pi: ExtensionAPI): void {
 
   let providerVersion = "";
   const currentSnapshot = (): Snapshot => ({ schema_version: 1, instance_id: instanceId, provider_version: providerVersion, provider_session_id: sessionId,
-    writer_pid: process.pid, revision, status, reply_keys: [REPLY_KEY], prompt });
+    writer_pid: process.pid, launch_id: launchId, revision, status, reply_keys: [REPLY_KEY], prompt });
   let writeQueue = Promise.resolve();
+  // `session_id` is this launch's conversation identity, so the host can resume
+  // it without parsing OMP's own store. Rewritten with the heartbeat to stay
+  // fresh for every reader that bounds the sidecar's age.
+  const writeFiles = async (): Promise<void> => {
+    if (!(await ensurePrivateDirectories(root, dir, uid))) return;
+    await writePrivateFile(dir, SNAPSHOT_NAME, JSON.stringify(currentSnapshot()));
+    if (sessionId) await writePrivateFile(dir, path.basename(sessionIdPath), sessionId);
+    try { const directory = await open(dir, constants.O_RDONLY); await directory.sync(); await directory.close(); } catch { /* best effort */ }
+  };
   const writeSnapshot = (): Promise<void> => {
     if (!providerVersion) return writeQueue;
-    writeQueue = writeQueue.then(async () => {
-      let temporary: string | undefined;
-      try {
-        if (!(await ensurePrivateDirectories(root, dir, uid))) return;
-        temporary = path.join(dir, `.integration-agent-of-empires.omp.${process.pid}.${randomUUID()}.tmp`);
-        const file = await open(temporary, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY | constants.O_NOFOLLOW, 0o600);
-        try { await file.writeFile(JSON.stringify(currentSnapshot()), "utf8"); await file.sync(); } finally { await file.close(); }
-        await rename(temporary, snapshotPath);
-        temporary = undefined;
-        try { const directory = await open(dir, constants.O_RDONLY); await directory.sync(); await directory.close(); } catch { /* best effort */ }
-      } catch {
-        if (temporary) await unlink(temporary).catch(() => undefined);
-      }
-    });
+    writeQueue = writeQueue.then(writeFiles).catch(() => undefined);
     return writeQueue;
   };
   const publish = (nextPrompt: Prompt | null, nextStatus: Snapshot["status"]): void => {
@@ -357,9 +407,8 @@ export default function (pi: ExtensionAPI): void {
     clearInterval(heartbeat);
     unlisten?.();
     await writeQueue;
-    if (safeDirectorySync(root, uid) && safeDirectorySync(dir, uid) &&
-        await ownsSnapshot(snapshotPath, uid, instanceId, sessionId)) {
-      await unlink(snapshotPath).catch(() => undefined);
-    }
+    if (!safeDirectorySync(root, uid) || !safeDirectorySync(dir, uid)) return;
+    if (await ownsSessionId(sessionIdPath, uid, sessionId)) await unlink(sessionIdPath).catch(() => undefined);
+    if (await ownsSnapshot(snapshotPath, uid, instanceId, sessionId)) await unlink(snapshotPath).catch(() => undefined);
   });
 }

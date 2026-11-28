@@ -8,15 +8,15 @@ mod tests {
         ManifestError, PluginManifest,
     };
 
-    /// The pinned host accepts API 21, so the shipped manifest must validate cleanly there.
+    /// The pinned host accepts API 28, so the shipped manifest must validate cleanly there.
     #[test]
     fn manifest_matches_omp_agent_contract() {
         let manifest: PluginManifest = toml::from_str(include_str!("../../../aoe-plugin.toml"))
             .expect("plugin manifest must parse against the pinned AoE schema");
         if let Err(error) = manifest.validate() {
-            panic!("the manifest must validate against the released API 21 host: {error:?}");
+            panic!("the manifest must validate against the pinned API 28 host: {error:?}");
         }
-        assert_eq!(manifest.api_version, 21);
+        assert_eq!(manifest.api_version, 28);
         assert_eq!(manifest.version, "0.6.0");
         let mut api20 = manifest.clone();
         api20.api_version = 20;
@@ -26,6 +26,16 @@ mod tests {
                 "{errors:?}"
             ),
             result => panic!("expected API 20 declarations to be rejected: {result:?}"),
+        }
+        let mut api27 = manifest.clone();
+        api27.api_version = 27;
+        match api27.validate() {
+            Err(ManifestError::Invalid(errors)) => assert!(
+                errors.iter().any(|error| error
+                    .contains("launch.capture.backend = \"extension_sidecar\" requires api_version >= 28")),
+                "{errors:?}"
+            ),
+            result => panic!("expected API 27 to reject the sidecar capture backend: {result:?}"),
         }
         assert!(manifest
             .capabilities
@@ -85,7 +95,7 @@ mod tests {
             })
         );
         let capture = launch.capture.as_ref().expect("capture");
-        assert_eq!(capture.backend, AgentCaptureBackend::Omp);
+        assert_eq!(capture.backend, AgentCaptureBackend::ExtensionSidecar);
         assert_eq!(capture.host, AgentCaptureContext::PaneScoped);
         assert_eq!(capture.sandbox, AgentCaptureContext::PaneScoped);
         assert_eq!(

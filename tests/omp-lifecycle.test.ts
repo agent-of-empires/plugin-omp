@@ -1,6 +1,7 @@
 import { expect, mock, test } from "bun:test";
 import { randomUUID } from "node:crypto";
-import { readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import ompExtension, { integrationDirectory } from "../omp-extension/index.ts";
 
@@ -77,5 +78,53 @@ test("native lifecycle events publish running and idle schema-1 snapshots", asyn
     if (previousPane === undefined) delete process.env.TMUX_PANE;
     else process.env.TMUX_PANE = previousPane;
     rmSync(path.dirname(reportPath), { recursive: true, force: true });
+  }
+});
+
+test("a mounted integration directory receives the session id sidecar", async () => {
+  const previousInstanceId = process.env.AOE_INSTANCE_ID;
+  const previousIntegrationDir = process.env.AOE_INTEGRATION_DIR;
+  const previousSource = process.env.AOE_SESSION_SOURCE;
+  const previousPane = process.env.TMUX_PANE;
+  const instanceId = `mounted-${process.pid}-${randomUUID()}`;
+  const launchId = randomUUID();
+  const scratch = mkdtempSync(path.join(tmpdir(), "aoe-omp-mounted-"));
+  const dir = path.join(scratch, instanceId);
+  const snapshotPath = path.join(dir, "integration-agent-of-empires.omp.json");
+  const sessionIdPath = path.join(dir, `session_id.${launchId}`);
+  const handlers = new Map<string, (...args: unknown[]) => unknown>();
+  const pi = {
+    on(event: string, handler: unknown) {
+      if (typeof handler === "function") handlers.set(event, handler as (...args: unknown[]) => unknown);
+    },
+  } as unknown as Parameters<typeof ompExtension>[0];
+  try {
+    process.env.AOE_INSTANCE_ID = instanceId;
+    process.env.AOE_INTEGRATION_DIR = dir;
+    process.env.AOE_SESSION_SOURCE = launchId;
+    delete process.env.TMUX_PANE;
+    ompExtension(pi);
+    await handlers.get("session_start")?.({}, {
+      sessionManager: { getSessionId: () => "provider-session" },
+      ui: { onTerminalInput: () => () => {} },
+    });
+    expect(readFileSync(sessionIdPath, "utf8")).toBe("provider-session");
+    expect(readFileSync(snapshotPath, "utf8")).toContain("provider-session");
+    // A sandboxed provider's pid is a container pid, so the report must name the
+    // launch it came from or the host ignores it.
+    expect(JSON.parse(readFileSync(snapshotPath, "utf8"))).toMatchObject({ launch_id: launchId });
+    await Promise.resolve(handlers.get("session_shutdown")?.());
+    expect(existsSync(sessionIdPath)).toBe(false);
+    expect(existsSync(snapshotPath)).toBe(false);
+  } finally {
+    if (previousInstanceId === undefined) delete process.env.AOE_INSTANCE_ID;
+    else process.env.AOE_INSTANCE_ID = previousInstanceId;
+    if (previousIntegrationDir === undefined) delete process.env.AOE_INTEGRATION_DIR;
+    else process.env.AOE_INTEGRATION_DIR = previousIntegrationDir;
+    if (previousSource === undefined) delete process.env.AOE_SESSION_SOURCE;
+    else process.env.AOE_SESSION_SOURCE = previousSource;
+    if (previousPane === undefined) delete process.env.TMUX_PANE;
+    else process.env.TMUX_PANE = previousPane;
+    rmSync(scratch, { recursive: true, force: true });
   }
 });
