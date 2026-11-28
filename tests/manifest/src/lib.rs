@@ -8,15 +8,15 @@ mod tests {
         ManifestError, PluginManifest,
     };
 
-    /// The pinned host accepts API 26, so the shipped manifest must validate cleanly there.
+    /// The pinned host accepts API 28, so the shipped manifest must validate cleanly there.
     #[test]
     fn manifest_matches_omp_agent_contract() {
         let manifest: PluginManifest = toml::from_str(include_str!("../../../aoe-plugin.toml"))
             .expect("plugin manifest must parse against the pinned AoE schema");
         if let Err(error) = manifest.validate() {
-            panic!("the manifest must validate against the pinned API 26 host: {error:?}");
+            panic!("the manifest must validate against the pinned API 28 host: {error:?}");
         }
-        assert_eq!(manifest.api_version, 26);
+        assert_eq!(manifest.api_version, 28);
         assert_eq!(manifest.version, "0.6.0");
         let mut api20 = manifest.clone();
         api20.api_version = 20;
@@ -27,15 +27,15 @@ mod tests {
             ),
             result => panic!("expected API 20 declarations to be rejected: {result:?}"),
         }
-        let mut api25 = manifest.clone();
-        api25.api_version = 25;
-        match api25.validate() {
+        let mut api27 = manifest.clone();
+        api27.api_version = 27;
+        match api27.validate() {
             Err(ManifestError::Invalid(errors)) => assert!(
                 errors.iter().any(|error| error
-                    .contains("launch.capture.backend = \"extension_sidecar\" requires api_version >= 26")),
+                    .contains("launch.capture.backend = \"extension_sidecar\" requires api_version >= 28")),
                 "{errors:?}"
             ),
-            result => panic!("expected API 25 to reject the sidecar capture backend: {result:?}"),
+            result => panic!("expected API 27 to reject the sidecar capture backend: {result:?}"),
         }
         assert!(manifest
             .capabilities

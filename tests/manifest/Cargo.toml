@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-# The host branch that adds API 26 `extension_sidecar` capture; re-point at the
-# release that ships it before tagging.
-aoe-plugin-api = { git = "https://github.com/agent-of-empires/agent-of-empires.git", rev = "9a56f0c5b696275a0ad849133302fba277b06b99" }
+# The agent-of-empires#6060 head, the only host that gates `extension_sidecar`
+# at API 28; re-point at the release that ships it before tagging.
+aoe-plugin-api = { git = "https://github.com/agent-of-empires/agent-of-empires.git", rev = "5dfa8a15d5edb62d58477869c8442033b53d9c76" }
 toml = "1.1"
